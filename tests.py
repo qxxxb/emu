@@ -202,9 +202,9 @@ class TestEmu(unittest.TestCase):
         # SHR
         emu = Emu()
         emu.mem[1] = 0b101110
-        ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.SHR, 3)
+        ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.SHR, 2)
         emu.execute(ins)
-        self.assertEqual(emu.mem[2], 0b101110 >> 3)
+        self.assertEqual(emu.mem[2], 0b001011)
 
         # SAR
         emu = Emu()

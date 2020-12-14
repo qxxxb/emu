@@ -140,6 +140,12 @@ class Emu:
         ans.tape = Tape.from_bytes(s)
         return ans
 
+    # Ops
+
+    def op_inv(self, ins):
+        logging.warning('Invalid instruction')
+        self.halted = True
+
     # Arithmetic and logic
 
     def op_add(self, ins):
@@ -248,7 +254,6 @@ class Emu:
         rs, ra, ib = ins.a, ins.b, ins.c
         rd = (self.mem[ra] + ib) & Emu.mask
         self.mem[rd] = self.mem[rs]
-        pass
 
     def op_fm(self, ins):
         (fm_type, pr, rd, ra) = ins.as_fm()
@@ -269,9 +274,7 @@ class Emu:
         pass
 
     def op_jup(self, ins, reverse=False):
-        la, lb, rc = ins.a, ins.b, ins.c
-        lc = self.mem[rc]
-        key = (la, lb, lc)
+        key = (ins.partial_jump_key(), self.mem[ins.c])
 
         # Search for the label matching key
         start = self.pc
@@ -288,7 +291,7 @@ class Emu:
             ch_ins = self.tape[i]  # Check instruction
             if ch_ins.op == Op.LBL and \
                     self.should_execute(ch_ins) and \
-                    ch_ins.as_label() == key:
+                    ch_ins.label_key() == key:
                 self.pc = i
                 return
 
@@ -345,6 +348,7 @@ class Emu:
             self.halted = True
 
     op_switch = {
+        Op.INV: op_inv,
         Op.ADD: op_add,
         Op.ADDI: op_addi,
         Op.SUB: op_sub,
@@ -374,11 +378,6 @@ class Emu:
             (ins.cond == Cond.FA and not self.cf)
 
     def execute(self, ins):
-        if not ins.valid:
-            logging.warning('Invalid instruction {}'.format(ins))
-            self.halted = True
-            return
-
         if self.should_execute(ins):
             if ins.op in Emu.op_switch:
                 op_func = Emu.op_switch[ins.op]

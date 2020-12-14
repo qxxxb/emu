@@ -1,105 +1,161 @@
-# I didn't really read/change this file
+from ins import *
+from emu import *
 
 
-def disasm(ins):
-    cmarr = ["tr", "fa", "eq", "ne", "sl", "sg", "ul", "ug"]
+class Disasm:
+    @staticmethod
+    def cond_prefix(ins):
+        if ins.cond == Cond.UN:
+            return ' '
+        elif ins.cond == Cond.TR:
+            return '+'
+        elif ins.cond == Cond.FA:
+            return '-'
 
-    ans = ""
-    valid, op, cond, a, b, c = ins.get()
-    if not valid:
-        return "Invalid instruction"
+    @staticmethod
+    def disasm_inv(ins):
+        return '  ' + 'INV'
 
-    if cond == 1:
-        ans += "+ "
-    elif cond == 2:
-        ans += "- "
-    else:
-        ans += "  "
-    if op == 0:
-        ans += f"add r{a}, r{b}, r{c}"
-    elif op == 1:
-        ans += f"add r{a}, r{b}, {c}"
-    elif op == 2:
-        ans += f"sub r{a}, r{b}, r{c}"
-    elif op == 3:
-        cmptype = a//8
-        cm = a % 8
-        if cmptype == 0:
-            ans += f"cmp{cmarr[cm]} r{b}, r{c}"
-        if cmptype == 1:
-            ans += f"cmp{cmarr[cm]} r{c}, r{b}"
-        if cmptype == 2:
-            ans += f"cmp{cmarr[cm]} r{b}, {c}"
-        if cmptype == 3:
-            ans += f"cmp{cmarr[cm]} {b}, r{c}"
-    elif op == 4:
-        ans += f"or r{a}, r{b}, r{c}"
-    elif op == 5:
-        ans += f"or r{a}, r{b}, {c}"
-    elif op == 6:
-        ans += f"xor r{a}, r{b}, r{c}"
-    elif op == 7:
-        ans += f"xor r{a}, r{b}, {c}"
-    elif op == 8:
-        ans += f"and r{a}, r{b}, r{c}"
-    elif op == 9:
-        ans += f"and r{a}, r{b}, {c}"
-    elif op == 10:
-        shifttype = c//8
-        ib = c % 8
-        if shifttype == 0:
-            ans += f"shl r{a}, r{b}, {ib}"
-        elif shifttype == 1:
-            ans += f"shr r{a}, r{b}, {ib}"
-        elif shifttype == 2:
-            ans += f"sar r{a}, r{b}, {ib}"
-        elif shifttype == 3:
-            ans += f"rol r{a}, r{b}, {ib}"
-    elif op == 11:
-        ans += f"shl r{a}, r{b}, r{c}"
-    elif op == 12:
-        ans += f"shr r{a}, r{b}, r{c}"
-    elif op == 13:
-        brackets = "[" + (f"r{b}", "")[b == 0] + "+" * \
-            (b != 0 and c != 0) + (f"{c}", "")[c == 0] + "]"
-        ans += f"ld r{a}, {brackets}"
-    elif op == 14:
-        brackets = "[" + (f"r{b}", "")[b == 0] + "+" * \
-            (b != 0 and c != 0) + (f"{c}", "")[c == 0] + "]"
-        ans += f"st {brackets}, r{a}"
-    elif op == 15:
-        lab = (64*a+b) % 4096
-        ans += f"lbl {lab}, {c}"
-    elif op == 16:
-        lab = (64*a+b) % 4096
-        ans += f"jup {lab}, r{c}"
-    elif op == 17:
-        lab = (64*a+b) % 4096
-        ans += f'jdn {lab}, r{c}'
-    elif op == 18:
-        if a == 0 and c == 0:
-            ans += f"io {b}"
-            return ans
-        if c == 0:
-            ans += f"io r{a}, {b}"
-            return ans
-        if a == 0:
-            ans += f"io {b}, r{c}"
-            return ans
-        ans += f"io r{a}, {b}, r{c}"
-    elif op == 19:
-        multype = c//16
-        pr = c % 16
-        if multype == 0:
-            ans += f"fmu/{pr} r{a}, r{b}"
-        if multype == 1:
-            ans += f"fms/{pr} r{a}, r{b}"
-    elif op == 20:
-        ans += "hlt"
-    return ans
+    @staticmethod
+    def disasm_values(ins):
+        # TODO: Remove this
+        return str(ins)
+
+    @staticmethod
+    def disasm_rrr(ins):
+        return '{} {:<6} r{}, r{}, r{}'.format(
+            Disasm.cond_prefix(ins),
+            ins.op.name,
+            ins.a, ins.b, ins.c
+        )
+
+    @staticmethod
+    def disasm_rri(ins):
+        return '{} {:<6} r{}, r{}, {}'.format(
+            Disasm.cond_prefix(ins),
+            ins.op.name,
+            ins.a, ins.b, ins.c
+        )
+
+    @staticmethod
+    def disasm_cmp(ins):
+        (cmp_type, cm, a, b) = ins.as_cmp()
+
+        if cmp_type == CmpType.RA_RB:
+            s = 'r{}, r{}'.format(a, b)
+        elif cmp_type == CmpType.RB_RA:
+            s = 'r{}, r{}'.format(b, a)
+        elif cmp_type == CmpType.RA_IB:
+            s = 'r{}, {}'.format(a, b)
+        elif cmp_type == CmpType.IA_RB:
+            s = '{}, r{}'.format(a, b)
+
+        return '{} {:<6} {}'.format(
+            Disasm.cond_prefix(ins),
+            ins.op.name + cm.name,
+            s
+        )
+
+    @staticmethod
+    def disasm_shi(ins):
+        (shi_type, rd, ra, ib) = ins.as_shi()
+        return '{} {:<6} r{}, r{}, {}'.format(
+            Disasm.cond_prefix(ins),
+            shi_type.name,
+            rd, ra, ib
+        )
+
+    @staticmethod
+    def disasm_ld(ins):
+        rd, ra, ib = ins.a, ins.b, ins.c
+        return '{} {:<6} r{}, [r{}+{}]'.format(
+            Disasm.cond_prefix(ins),
+            ins.op.name,
+            rd, ra, ib
+        )
+
+    @staticmethod
+    def disasm_st(ins):
+        rs, ra, ib = ins.a, ins.b, ins.c
+        return '{} {:<6} [r{}+{}], r{}'.format(
+            Disasm.cond_prefix(ins),
+            ins.op.name,
+            ra, ib, rs
+        )
+
+    @staticmethod
+    def disasm_fm(ins):
+        (fm_type, pr, rd, ra) = ins.as_fm()
+        return '{} {:<6} r{}, r{}'.format(
+            Disasm.cond_prefix(ins),
+            '{}/{}'.format(ins.op.name + fm_type.name, pr),
+            rd, ra
+        )
+
+    @staticmethod
+    def disasm_lbl(ins):
+        lab, lc = ins.label_key()
+        return '{} {:<6} {}, {}'.format(
+            Disasm.cond_prefix(ins),
+            ins.op.name,
+            lab, lc
+        )
+
+    @staticmethod
+    def disasm_jump(ins):
+        lab, rc = ins.partial_jump_key(), ins.c
+        return '{} {:<6} {}, r{}'.format(
+            Disasm.cond_prefix(ins),
+            ins.op.name,
+            lab, rc
+        )
+
+    @staticmethod
+    def disasm_io(ins):
+        (rd, ix, rs) = ins.as_io()
+        return '{} {:<6} r{}, {}, r{}'.format(
+            Disasm.cond_prefix(ins),
+            ins.op.name,
+            rd, ix.name, rs
+        )
+
+    disasm_switch = {
+        Op.INV: disasm_inv.__func__,
+        Op.ADD: disasm_rrr.__func__,
+        Op.ADDI: disasm_rri.__func__,
+        Op.SUB: disasm_rrr.__func__,
+        Op.OR: disasm_rrr.__func__,
+        Op.ORI: disasm_rri.__func__,
+        Op.XOR: disasm_rrr.__func__,
+        Op.XORI: disasm_rri.__func__,
+        Op.AND: disasm_rrr.__func__,
+        Op.ANDI: disasm_rri.__func__,
+        Op.SHL: disasm_rrr.__func__,
+        Op.SHR: disasm_rrr.__func__,
+        Op.CMP: disasm_cmp.__func__,
+        Op.SHI: disasm_shi.__func__,
+        Op.LD: disasm_ld.__func__,
+        Op.ST: disasm_st.__func__,
+        Op.FM: disasm_fm.__func__,
+        Op.LBL: disasm_lbl.__func__,
+        Op.JUP: disasm_jump.__func__,
+        Op.JDN: disasm_jump.__func__,
+        Op.IO: disasm_io.__func__,
+    }
+
+    @staticmethod
+    def disasm(ins):
+        disasm_func = Disasm.disasm_switch.get(ins.op, Disasm.disasm_values)
+        return disasm_func(ins)
+
+    @staticmethod
+    def disasm_tape(tape, filename):
+        with open(filename, 'w') as f:
+            for i in range(len(tape)):
+                ins = tape[i]
+                f.write(Disasm.disasm(ins) + '\n')
 
 
-def disasm_tape(tape):
-    for i in range(len(tape)):
-        ins = tape[i]
-        print(disasm(ins))
+if __name__ == '__main__':
+    emu = Emu.from_filename('mandelflag.rom')
+    Disasm.disasm_tape(emu.tape, 'disasm.txt')

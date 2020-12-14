@@ -100,19 +100,17 @@ class Ins:
         ans = cls()
         ans.op, ans.cond = op, cond
         ans.a, ans.b, ans.c = a, b, c
-        ans.valid = True
         ans.check()
         return ans
 
     def as_values(self):
-        return (self.valid, self.op, self.cond, self.a, self.b, self.c)
+        return (self.op, self.cond, self.a, self.b, self.c)
 
     @classmethod
     def invalid(cls):
         ans = cls()
         ans.op, ans.cond = Op.INV, Cond.UN
         ans.a, ans.b, ans.c = 0, 0, 0
-        ans.valid = False
         ans.check()
         return ans
 
@@ -124,7 +122,6 @@ class Ins:
         ans.a = (cmp_type.value << 3) + cm.value
         # Not a mistake, the vars `a` and `b` go to `b` and `c`
         ans.b, ans.c = a, b
-        ans.valid = True
         ans.check()
         return ans
 
@@ -143,7 +140,6 @@ class Ins:
         ans.b = ra
         ans.c = (shi_type.value << 3) + ib
         assert 0 <= ib < 8
-        ans.valid = True
         ans.check()
         return ans
 
@@ -163,7 +159,6 @@ class Ins:
         ans.b = ra
         ans.c = (fm_type.value << 4) + pr
         assert 0 <= pr < 16
-        ans.valid = True
         ans.check()
         return ans
 
@@ -174,9 +169,13 @@ class Ins:
         pr = self.c & 0b1111
         return (fm_type, pr, rd, ra)
 
-    def as_label(self):
+    def partial_jump_key(self):
+        assert self.op in {Op.LBL, Op.JDN, Op.JUP}
+        return (64 * self.a) + self.b
+
+    def label_key(self):
         assert self.op == Op.LBL
-        return (self.a, self.b, self.c)
+        return (self.partial_jump_key(), self.c)
 
     @classmethod
     def from_io(cls, cond, rd, ix, rs):
@@ -186,7 +185,6 @@ class Ins:
         ans.a = rd
         ans.b = ix.value
         ans.c = rs
-        ans.valid = True
         ans.check()
         return ans
 
@@ -220,7 +218,6 @@ class Ins:
         if opc == 0:
             return Ins.invalid()
         else:
-            ans.valid = True
             # opc - 1 = 21*cond + op
             # imm = 21*cond + op
             imm = opc - 1
