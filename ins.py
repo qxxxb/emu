@@ -87,31 +87,52 @@ class Ins:
     - OPC broken into op and condition
     '''
 
+    def check(self):
+        '''Check the instruction to make sure the fields within bounds'''
+        assert 0 <= self.op.value < 21
+        assert 0 <= self.cond.value < 3
+        assert 0 <= self.a < 64
+        assert 0 <= self.b < 64
+        assert 0 <= self.c < 64
+
     @classmethod
     def from_values(cls, op, cond, a, b, c):
         ans = cls()
         ans.op, ans.cond = op, cond
         ans.a, ans.b, ans.c = a, b, c
         ans.valid = True
+        ans.check()
         return ans
+
+    def as_values(self):
+        return (self.valid, self.op, self.cond, self.a, self.b, self.c)
 
     @classmethod
     def invalid(cls):
         ans = cls()
-        ans.op, ans.cond = Op.INV, 0
+        ans.op, ans.cond = Op.INV, Cond.UN
         ans.a, ans.b, ans.c = 0, 0, 0
         ans.valid = False
+        ans.check()
         return ans
 
     @classmethod
-    def from_cmp(cls, cond, cmp_type, cm, ra, rb):
+    def from_cmp(cls, cond, cmp_type, cm, a, b):
         ans = cls()
         ans.op = Op.CMP
         ans.cond = cond
         ans.a = (cmp_type.value << 3) + cm.value
-        ans.b, ans.c = ra, rb
+        # Not a mistake, the vars `a` and `b` go to `b` and `c`
+        ans.b, ans.c = a, b
         ans.valid = True
+        ans.check()
         return ans
+
+    def as_cmp(self):
+        assert self.op == Op.CMP
+        cmp_type = CmpType(self.a >> 3)
+        cm = Cm(self.a & 0b111)
+        return (cmp_type, cm, self.b, self.c)
 
     @classmethod
     def from_shi(cls, cond, rd, ra, shi_type, ib):
@@ -123,7 +144,15 @@ class Ins:
         ans.c = (shi_type.value << 3) + ib
         assert 0 <= ib < 8
         ans.valid = True
+        ans.check()
         return ans
+
+    def as_shi(self):
+        assert self.op == Op.SHI
+        rd, ra = self.a, self.b
+        shi_type = ShiType(self.c >> 3)
+        ib = self.c & 0b111
+        return (shi_type, rd, ra, ib)
 
     @classmethod
     def from_fm(cls, cond, rd, ra, fm_type, pr):
@@ -135,7 +164,19 @@ class Ins:
         ans.c = (fm_type.value << 4) + pr
         assert 0 <= pr < 16
         ans.valid = True
+        ans.check()
         return ans
+
+    def as_fm(self):
+        assert self.op == Op.FM
+        rd, ra = self.a, self.b
+        fm_type = FmType(self.c >> 4)
+        pr = self.c & 0b1111
+        return (fm_type, pr, rd, ra)
+
+    def as_label(self):
+        assert self.op == Op.LBL
+        return (self.a, self.b, self.c)
 
     @classmethod
     def from_io(cls, cond, rd, ix, rs):
@@ -146,7 +187,14 @@ class Ins:
         ans.b = ix.value
         ans.c = rs
         ans.valid = True
+        ans.check()
         return ans
+
+    def as_io(self):
+        assert self.op == Op.IO
+        rd, ix, rs = self.a, self.b, self.c
+        ix = IoDevice(ix)
+        return (rd, ix, rs)
 
     @classmethod
     def from_bytes(cls, ins_bytes):
@@ -187,17 +235,11 @@ class Ins:
             ans.op = Op(op)
             ans.cond = Cond(cond)
 
+        ans.check()
         return ans
 
-    def label(self):
-        assert self.op == Op.LBL
-        return (self.a, self.b, self.c)
-
-    def get(self):
-        return (self.valid, self.op, self.cond, self.a, self.b, self.c)
-
     def __repr__(self):
-        return str(self.get())
+        return str(self.as_values())
 
     def __eq__(self, other):
-        return self.get() == other.get()
+        return self.as_values() == other.as_values()

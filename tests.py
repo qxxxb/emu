@@ -106,13 +106,13 @@ class TestEmu(unittest.TestCase):
     def test_cmp_sl_pos_neg(self):
         emu = Emu()
         emu.mem[1] = 5
-        emu.mem[2] = -7
+        emu.mem[2] = from_int(-7)
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.SL, 1, 2)
         emu.execute(ins)
         self.assertFalse(emu.cf)
 
         emu = Emu()
-        emu.mem[1] = -5
+        emu.mem[1] = from_int(-5)
         emu.mem[2] = 5
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.SL, 1, 2)
         emu.execute(ins)
@@ -120,15 +120,15 @@ class TestEmu(unittest.TestCase):
 
     def test_cmp_sl_neg_neg(self):
         emu = Emu()
-        emu.mem[1] = -5
-        emu.mem[2] = -7
+        emu.mem[1] = from_int(-5)
+        emu.mem[2] = from_int(-7)
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.SL, 1, 2)
         emu.execute(ins)
         self.assertFalse(emu.cf)
 
         emu = Emu()
-        emu.mem[1] = -13
-        emu.mem[2] = -5
+        emu.mem[1] = from_int(-13)
+        emu.mem[2] = from_int(-5)
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.SL, 1, 2)
         emu.execute(ins)
         self.assertTrue(emu.cf)

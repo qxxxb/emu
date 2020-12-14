@@ -4,6 +4,7 @@ from ins import *
 import sys
 from string import digits, ascii_uppercase
 import pickle
+import time
 
 
 # Whether save the machine state when the key is requested
@@ -52,9 +53,11 @@ class Mem:
         self.data = [0] * 64
 
     def __getitem__(self, i):
+        assert 0 <= self.data[i] < 64
         return self.data[i]
 
     def __setitem__(self, i, v):
+        assert 0 <= v < 64
         if i != 0:
             self.data[i] = v
 
@@ -186,22 +189,21 @@ class Emu:
     # Comparison
 
     def op_cmp(self, ins):
-        cmp_type = CmpType(ins.a >> 3)
-        cm = Cm(ins.a & 0b111)
+        (cmp_type, cm, a, b) = ins.as_cmp()
 
         # Determine left and right sides of comparison
         if cmp_type == CmpType.RA_RB:
-            left = self.mem[ins.b]
-            right = self.mem[ins.c]
+            left = self.mem[a]
+            right = self.mem[b]
         elif cmp_type == CmpType.RB_RA:
-            left = self.mem[ins.c]
-            right = self.mem[ins.b]
+            left = self.mem[b]
+            right = self.mem[a]
         elif cmp_type == CmpType.RA_IB:
-            left = self.mem[ins.b]
-            right = ins.c
+            left = self.mem[a]
+            right = b
         elif cmp_type == CmpType.IA_RB:
-            left = ins.b
-            right = self.mem[ins.c]
+            left = a
+            right = self.mem[b]
 
         # Do comparison
         if cm == Cm.TR:
@@ -224,17 +226,16 @@ class Emu:
             raise ValueError('Unhandled cm: {}'.format(cm))
 
     def op_shi(self, ins):
-        rd, ra = ins.a, ins.b
-        shi_type = ShiType(ins.c >> 3)
-        ib = ins.c & 0b111
+        (shi_type, rd, ra, ib) = ins.as_shi()
+
         if shi_type == ShiType.SHL:
-            self.mem[rd] = self.mem[ra] << ib
+            self.mem[rd] = (self.mem[ra] << ib) & Emu.mask
         elif shi_type == ShiType.SHR:
-            self.mem[rd] = self.mem[ra] >> ib
+            self.mem[rd] = (self.mem[ra] >> ib) & Emu.mask
         elif shi_type == ShiType.SAR:
-            self.mem[rd] = sar(self.mem[ra], ib)
+            self.mem[rd] = (sar(self.mem[ra], ib)) & Emu.mask
         elif shi_type == ShiType.ROL:
-            self.mem[rd] = rol(self.mem[ra], ib)
+            self.mem[rd] = (rol(self.mem[ra], ib)) & Emu.mask
         else:
             raise ValueError('Unhandled shi_type: {}'.format(shi_type))
 
@@ -250,9 +251,7 @@ class Emu:
         pass
 
     def op_fm(self, ins):
-        rd, ra = ins.a, ins.b
-        fm_type = FmType(ins.c >> 4)
-        pr = ins.c & 0b1111
+        (fm_type, pr, rd, ra) = ins.as_fm()
 
         # 12 bit buffer
         ans = (self.mem[rd] * self.mem[ra]) & 0o7777
@@ -287,9 +286,9 @@ class Emu:
                 raise ValueError('Couldn''t find label: {}'.format(key))
 
             ch_ins = self.tape[i]  # Check instruction
-            if self.should_execute(ch_ins) and \
-                    ch_ins.op == Op.LBL and \
-                    ch_ins.label() == key:
+            if ch_ins.op == Op.LBL and \
+                    self.should_execute(ch_ins) and \
+                    ch_ins.as_label() == key:
                 self.pc = i
                 return
 
@@ -297,8 +296,7 @@ class Emu:
         self.op_jup(ins, reverse=True)
 
     def op_io(self, ins):
-        rd, ix, rs = ins.a, ins.b, ins.c
-        ix = IoDevice(ix)
+        (rd, ix, rs) = ins.as_io()
         if ix == IoDevice.SERIAL_INCOMING:
             if make_pickle:
                 # After printing the mandelprot, it will ask for a key.
@@ -313,7 +311,7 @@ class Emu:
                 self.buffer += s
 
             # Send the length of buffer
-            self.mem[rd] = from_int(len(self.buffer))
+            self.mem[rd] = from_int(len(self.buffer)) & Emu.mask
         elif ix == IoDevice.SERIAL_READ:
             # Read more input if we don't have any in the buffer
             while len(self.buffer) == 0:
@@ -323,7 +321,7 @@ class Emu:
             # Pop the first char and send it
             c = self.buffer[0]
             self.buffer = self.buffer[1:]
-            self.mem[rd] = from_int(serial_from_chr(c))
+            self.mem[rd] = from_int(serial_from_chr(c)) & Emu.mask
         elif ix == IoDevice.SERIAL_WRITE:
             c = chr_from_serial(self.mem[rs])
 
@@ -393,6 +391,7 @@ class Emu:
             # Keep a log of instructions executed
             inss_log = []
 
+        start = time.time()
         self.clock = 0
 
         while not self.halted:
@@ -404,8 +403,14 @@ class Emu:
             self.execute(ins)
             self.pc = (self.pc + 1) % len(self.tape)  # Tape is looped
 
-            # Let one instruction take 1 centisecond
-            self.clock = (self.clock + 1) & 0o7777
+            now = time.time()
+            elapsed = now - start
+            elapsed = round(elapsed, 2)
+            elapsed = int(elapsed * 100)
+
+            # TODO: Is it really not supposed to wrap around?
+            self.clock = max(elapsed, 0o7777)
+            # self.clock = (self.clock + 1) & 0o7777
 
         if log_inss:
             return inss_log
