@@ -65,9 +65,8 @@ class Mem:
         return self.data[i]
 
     def __setitem__(self, i, v):
-        assert 0 <= v < 64
         if i != 0:
-            self.data[i] = v
+            self.data[i] = v & 0o77
 
     def __len__(self):
         return len(self.data)
@@ -127,8 +126,6 @@ def serial_from_chr(c):
 
 
 class Emu:
-    mask = 0b111111
-
     def __init__(self):
         self.mem = Mem()
         self.pc = 0
@@ -159,47 +156,47 @@ class Emu:
 
     def op_add(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = (self.mem[ra] + self.mem[rb]) & Emu.mask
+        self.mem[rd] = self.mem[ra] + self.mem[rb]
 
     def op_addi(self, ins):
         rd, ra, ib = ins.a, ins.b, ins.c
-        self.mem[rd] = (self.mem[ra] + ib) & Emu.mask
+        self.mem[rd] = self.mem[ra] + ib
 
     def op_sub(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = (self.mem[ra] + twos_comp(self.mem[rb])) & Emu.mask
+        self.mem[rd] = self.mem[ra] + twos_comp(self.mem[rb])
 
     def op_or(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = (self.mem[ra] | self.mem[rb]) & Emu.mask
+        self.mem[rd] = self.mem[ra] | self.mem[rb]
 
     def op_ori(self, ins):
         rd, ra, ib = ins.a, ins.b, ins.c
-        self.mem[rd] = (self.mem[ra] | ib) & Emu.mask
+        self.mem[rd] = self.mem[ra] | ib
 
     def op_xor(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = (self.mem[ra] ^ twos_comp(self.mem[rb])) & Emu.mask
+        self.mem[rd] = self.mem[ra] ^ twos_comp(self.mem[rb])
 
     def op_xori(self, ins):
         rd, ra, ib = ins.a, ins.b, ins.c
-        self.mem[rd] = (self.mem[ra] ^ ib) & Emu.mask
+        self.mem[rd] = self.mem[ra] ^ ib
 
     def op_and(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = (self.mem[ra] & twos_comp(self.mem[rb])) & Emu.mask
+        self.mem[rd] = self.mem[ra] & twos_comp(self.mem[rb])
 
     def op_andi(self, ins):
         rd, ra, ib = ins.a, ins.b, ins.c
-        self.mem[rd] = (self.mem[ra] & ib) & Emu.mask
+        self.mem[rd] = self.mem[ra] & ib
 
     def op_shl(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = (self.mem[ra] << self.mem[rb]) & Emu.mask
+        self.mem[rd] = self.mem[ra] << self.mem[rb]
 
     def op_shr(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = (self.mem[ra] >> self.mem[rb]) & Emu.mask
+        self.mem[rd] = self.mem[ra] >> self.mem[rb]
 
     # Comparison
 
@@ -244,24 +241,24 @@ class Emu:
         (shi_type, rd, ra, ib) = ins.as_shi()
 
         if shi_type == ShiType.SHLI:
-            self.mem[rd] = (self.mem[ra] << ib) & Emu.mask
+            self.mem[rd] = self.mem[ra] << ib
         elif shi_type == ShiType.SHRI:
-            self.mem[rd] = (self.mem[ra] >> ib) & Emu.mask
+            self.mem[rd] = self.mem[ra] >> ib
         elif shi_type == ShiType.SARI:
-            self.mem[rd] = (sar(self.mem[ra], ib)) & Emu.mask
+            self.mem[rd] = sar(self.mem[ra], ib)
         elif shi_type == ShiType.ROLI:
-            self.mem[rd] = (rol(self.mem[ra], ib)) & Emu.mask
+            self.mem[rd] = rol(self.mem[ra], ib)
         else:
             raise ValueError('Unhandled shi_type: {}'.format(shi_type))
 
     def op_ld(self, ins):
         rd, ra, ib = ins.a, ins.b, ins.c
-        rs = (self.mem[ra] + ib) & Emu.mask
+        rs = (self.mem[ra] + ib) & 0o77
         self.mem[rd] = self.mem[rs]
 
     def op_st(self, ins):
         rs, ra, ib = ins.a, ins.b, ins.c
-        rd = (self.mem[ra] + ib) & Emu.mask
+        rd = (self.mem[ra] + ib) & 0o77
         self.mem[rd] = self.mem[rs]
 
     def op_fm(self, ins):
@@ -274,8 +271,7 @@ class Emu:
         else:
             ans = sar(ans, pr, bits=12)
 
-        # Reduce back to 6 bits
-        ans = ans & Emu.mask
+        # `ans` will be deduce back to 6 bits when stored
         self.mem[rd] = ans
 
     def op_lbl(self, ins):
@@ -324,7 +320,7 @@ class Emu:
                 self.buffer += s
 
             # Send the length of buffer
-            self.mem[rd] = from_int(len(self.buffer)) & Emu.mask
+            self.mem[rd] = from_int(len(self.buffer))
         elif ix == IoDevice.SERIAL_READ:
             # TODO: Might want to make this more flexible
             # Read more input if we don't have any in the buffer
@@ -335,7 +331,7 @@ class Emu:
             # Pop the first char and send it
             c = self.buffer[0]
             self.buffer = self.buffer[1:]
-            self.mem[rd] = from_int(serial_from_chr(c)) & Emu.mask
+            self.mem[rd] = from_int(serial_from_chr(c))
         elif ix == IoDevice.SERIAL_WRITE:
             c = chr_from_serial(self.mem[rs])
 
