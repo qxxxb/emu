@@ -1,0 +1,526 @@
+  add r14, r0, 58
+  add r15, r0, 0
+- lbl 1027, 0
+  lbl 521, 0
+  add r12, r0, 56
+  add r13, r0, 0
+  lbl 522, 0
+  add r11, r0, 15
+  add r16, r0, 0
+  add r17, r0, 0
+  add r18, r0, 0
+  add r19, r0, 0
+  lbl 523, 0
+- lbl 1027, 0
+  add r3, r18, 0
+  add r4, r19, 0
+  add r5, r18, 0
+  add r6, r19, 0
+  add r63, r0, 1
+  jdn 1031, r0
+  lbl 1026, 1
+  cmpug r1, 31
++ jdn 1027, r0
+  add r20, r1, 0
+  add r21, r2, 0
+  sub r2, r0, r2
+  sub r1, r0, r1
+  cmpne r2, 0
++ add r1, r1, 63
+  add r22, r1, 0
+  add r23, r2, 0
+  add r3, r16, 0
+  add r4, r17, 0
+  add r5, r16, 0
+  add r6, r17, 0
+  add r63, r0, 2
+  jdn 1031, r0
+  lbl 1026, 2
+  cmpug r1, 31
++ jdn 1027, r0
+  add r21, r21, r2
+  cmpul r21, r2
++ add r20, r20, 1
+  add r20, r20, r1
+  cmpug r20, 31
++ lbl 1027, 0
++ jdn 524, r0
+  add r23, r23, r2
+  cmpul r23, r2
++ add r22, r22, 1
+  add r22, r22, r1
+  add r3, r18, 0
+  add r4, r19, 0
+  add r5, r16, 0
+  add r6, r17, 0
+  add r63, r0, 3
+  jdn 1031, r0
+  lbl 1026, 3
+  add r18, r1, 0
+  add r19, r2, 0
+  add r19, r19, r2
+  cmpul r19, r2
++ add r18, r18, 1
+  add r18, r18, r1
+  add r17, r23, r13
+  cmpul r17, r13
++ add r22, r22, 1
+  add r16, r22, r12
+  add r19, r19, r15
+  cmpul r19, r15
++ add r18, r18, 1
+  add r18, r18, r14
+  add r11, r11, 63
+  cmpne r11, 0
++ jup 523, r0
+  lbl 524, 0
+  cmpul r11, 1
++ add r11, r0, 50
++ jdn 735, r0
+  cmpug 4, r11
++ add r11, r0, 58
++ jdn 735, r0
+  cmpul r11, 9
++ add r11, r0, 38
++ jdn 735, r0
+  cmpug 12, r11
++ add r11, r0, 59
++ jdn 735, r0
+  cmpul r11, 15
++ add r11, r0, 60
++ jdn 735, r0
+  cmpug 18, r11
++ add r11, r0, 52
++ jdn 735, r0
+  add r11, r0, 36
+  lbl 735, 0
+  io 2, r11
+  add r13, r13, 6
+  cmpul r13, 6
++ add r12, r12, 1
+- lbl 1027, 0
+  cmpne r12, 4
++ jup 522, r0
+  add r1, r0, 62
+  io 2, r1
+  add r15, r15, 12
+  cmpul r15, 12
++ add r14, r14, 1
+  cmpne r14, 6
++ jdn 521, r0
+  add r53, r0, 13
+  jdn 734, r0
+- lbl 1027, 0
+  lbl 1031, 0
+  add r8, r0, 0
+  add r1, r0, 0
+  add r2, r0, 0
+  cmpsl r3, r0
++ xor r8, r8, 1
++ xor r4, r4, 63
++ xor r3, r3, 63
++ add r4, r4, 1
++ cmpeq r4, 0
++ add r3, r3, 1
+  cmpsl r5, 0
++ xor r8, r8, 1
++ xor r6, r6, 63
++ xor r5, r5, 63
++ add r6, r6, 1
++ cmpeq r6, 0
++ add r5, r5, 1
+  shl r7, r3, 2
+  shl r9, r5, 2
+  fmu/0 r7, r9
+  add r9, r0, 0
+  add r2, r2, r7
+  cmpul r2, r7
++ add r9, r9, 1
+  add r7, r0, r3
+  fmu/2 r7, r6
+  add r2, r2, r7
+  cmpul r2, r7
++ add r9, r9, 1
+  add r7, r0, r4
+  fmu/2 r7, r5
+  add r2, r2, r7
+  cmpul r2, r7
++ add r9, r9, 1
+  add r7, r0, r4
+  fmu/8 r7, r6
+  add r2, r2, r7
+  cmpul r2, r7
++ add r9, r9, 1
+  add r1, r9, 0
+  add r9, r0, 0
+  add r7, r0, r3
+  fmu/2 r7, r5
+  add r1, r1, r7
+  cmpul r1, r7
++ jup 1027, r0
+  add r7, r0, r3
+  fmu/8 r7, r6
+  add r1, r1, r7
+  cmpul r1, r7
++ jup 1027, r0
+  add r7, r0, r4
+  fmu/8 r7, r5
+  add r1, r1, r7
+  cmpul r1, r7
+  add r52, r0, 23
++ jdn 1027, r0
+  add r9, r3, 0
+  fmu/8 r9, r5
+  cmpne r9, 0
++ jdn 1027, r0
+  cmpne r8, 0
++ xor r2, r2, 63
++ xor r1, r1, 63
++ add r2, r2, 1
++ cmpeq r2, 0
++ add r1, r1, 1
+  jup 1026, r63
+  lbl 734, 0
+  add r1, r0, 17
+  io 2, r1
+  add r1, r0, 14
+  io 2, r1
+  add r1, r0, 34
+  io 2, r1
+  add r1, r0, 62
+  io 2, r1
+  io 4, r1
+  lbl 1536, 0
+  io r1, 4
+  cmpug r1, 1
+- jup 1536, r0
+  add r1, r0, 17
+  io 2, r1
+  add r1, r0, 14
+  io 2, r1
+  add r1, r0, 34
+  io 2, r1
+  add r1, r0, 36
+  io 2, r1
+  add r51, r0, 14
+  add r1, r0, 20
+  io 2, r1
+  add r1, r0, 18
+  io 2, r1
+  add r1, r0, 13
+  io 2, r1
+  add r1, r0, 62
+  io 2, r1
+  io 4, r1
+  lbl 1536, 0
+  io r1, 4
+  cmpug r1, 1
+- jup 1536, r0
+  add r1, r0, 32
+  io 2, r1
+  add r1, r0, 10
+  io 2, r1
+  add r1, r0, 23
+  io 2, r1
+  add r1, r0, 29
+  io 2, r1
+  add r1, r0, 36
+  io 2, r1
+  add r1, r0, 28
+  io 2, r1
+  add r1, r0, 30
+  io 2, r1
+  add r1, r0, 22
+  io 2, r1
+  add r1, r0, 60
+  io 2, r1
+  io 2, r1
+  io 2, r1
+  io 4, r1
+  lbl 1536, 0
+  io r1, 4
+  cmpug r1, 1
+- jup 1536, r0
+  add r1, r0, 15
+  io 2, r1
+  add r1, r0, 21
+  io 2, r1
+  add r1, r0, 10
+  io 2, r1
+  add r1, r0, 16
+  io 2, r1
+  add r1, r0, 53
+  io 2, r1
+  add r1, r0, 36
+  io 2, r1
+  add r1, r0, 62
+  io 2, r1
+  lbl 1537, 0
+  io r1, 0
+  cmpug r1, 3
+- jup 1537, r0
+  io r60, 1
+  io r61, 1
+  io 1
+  io 1
+  add r2, r0, 0
+  lbl 1539, 0
+  add r1, r2, r60
+  add r63, r0, 1
+  jdn 1538, r0
+  lbl 1540, 1
+  add r3, r0, r1
+  xor r1, r2, r61
+  add r63, r0, 2
+  jdn 1538, r0
+  lbl 1540, 2
+  sub r3, r3, r1
+  io 2, r3
+  st [r2+40], r3
+  add r2, r2, 1
+  cmpeq r2, 12
+- jup 1539, r0
+  add r1, r0, 0
+  add r50, r0, 16
+  lbl 1539, 0
+  ld r2, [r1+50]
+  io 2, r2
+  add r1, r1, 1
+  cmpeq r1, 4
+- jup 1539, r0
+  add r1, r0, 10
+  add r2, r0, 30
+  add r3, r0, 50
+  add r4, r0, 53
+  add r5, r0, 62
+  add r6, r0, 21
+  add r10, r0, 0
+  lbl 1539, 0
+  add r7, r0, 0
+  add r12, r0, 0
+  lbl 1541, 0
+  shl r7, r7, 1
+  ld r8, [r12+1]
+  and r8, r8, 1
+  or r7, r7, r8
+  ld r8, [r12+1]
+  shr r8, r8, 1
+  st [r12+1], r8
+  add r12, r12, 1
+  cmpeq r12, 6
+- jup 1541, r0
+  io 2, r7
+  add r10, r10, 1
+  cmpeq r10, 6
+- jup 1539, r0
+  jup 1542, r0
+  lbl 1543, 0
+Invalid instruction
+  lbl 1538, 0
+  cmpeq r1, 35
++ xor r1, r1, 40
++ jup 1540, r63
+  cmpeq r1, 29
++ xor r1, r1, 41
++ jup 1540, r63
+  cmpeq r1, 34
++ xor r1, r1, 52
++ jup 1540, r63
+  cmpeq r1, 16
++ xor r1, r1, 8
++ jup 1540, r63
+  cmpeq r1, 12
++ xor r1, r1, 54
++ jup 1540, r63
+  cmpeq r1, 13
++ xor r1, r1, 5
++ jup 1540, r63
+  cmpeq r1, 50
++ xor r1, r1, 18
++ jup 1540, r63
+  cmpeq r1, 0
++ xor r1, r1, 7
++ jup 1540, r63
+  cmpeq r1, 42
++ xor r1, r1, 35
++ jup 1540, r63
+  cmpeq r1, 49
++ xor r1, r1, 21
++ jup 1540, r63
+  cmpeq r1, 48
++ xor r1, r1, 11
++ jup 1540, r63
+  cmpeq r1, 31
++ xor r1, r1, 54
++ jup 1540, r63
+  cmpeq r1, 14
++ xor r1, r1, 59
++ jup 1540, r63
+  cmpeq r1, 28
++ xor r1, r1, 43
++ jup 1540, r63
+  cmpeq r1, 18
++ xor r1, r1, 20
++ jup 1540, r63
+  cmpeq r1, 61
++ xor r1, r1, 3
++ jup 1540, r63
+  cmpeq r1, 7
++ xor r1, r1, 4
++ jup 1540, r63
+  cmpeq r1, 53
++ xor r1, r1, 34
++ jup 1540, r63
+  cmpeq r1, 51
++ xor r1, r1, 32
++ jup 1540, r63
+  cmpeq r1, 54
++ xor r1, r1, 44
++ jup 1540, r63
+  cmpeq r1, 23
++ xor r1, r1, 43
++ jup 1540, r63
+  cmpeq r1, 63
++ xor r1, r1, 29
++ jup 1540, r63
+  cmpeq r1, 9
++ xor r1, r1, 16
++ jup 1540, r63
+  cmpeq r1, 26
++ xor r1, r1, 30
++ jup 1540, r63
+  cmpeq r1, 59
++ xor r1, r1, 46
++ jup 1540, r63
+  cmpeq r1, 3
++ xor r1, r1, 14
++ jup 1540, r63
+  cmpeq r1, 6
++ xor r1, r1, 45
++ jup 1540, r63
+  cmpeq r1, 32
++ xor r1, r1, 31
++ jup 1540, r63
+  cmpeq r1, 2
++ xor r1, r1, 42
++ jup 1540, r63
+  cmpeq r1, 41
++ xor r1, r1, 6
++ jup 1540, r63
+  cmpeq r1, 25
++ xor r1, r1, 41
++ jup 1540, r63
+  cmpeq r1, 55
++ xor r1, r1, 14
++ jup 1540, r63
+  cmpeq r1, 20
++ xor r1, r1, 58
++ jup 1540, r63
+  cmpeq r1, 10
++ xor r1, r1, 15
++ jup 1540, r63
+  cmpeq r1, 27
++ xor r1, r1, 45
++ jup 1540, r63
+  cmpeq r1, 11
++ xor r1, r1, 10
++ jup 1540, r63
+  cmpeq r1, 4
++ xor r1, r1, 25
++ jup 1540, r63
+  cmpeq r1, 58
++ xor r1, r1, 53
++ jup 1540, r63
+  cmpeq r1, 36
++ xor r1, r1, 52
++ jup 1540, r63
+  cmpeq r1, 60
++ xor r1, r1, 48
++ jup 1540, r63
+  cmpeq r1, 56
++ xor r1, r1, 56
++ jup 1540, r63
+  cmpeq r1, 8
++ xor r1, r1, 34
++ jup 1540, r63
+  cmpeq r1, 22
++ xor r1, r1, 24
++ jup 1540, r63
+  cmpeq r1, 19
++ xor r1, r1, 17
++ jup 1540, r63
+  cmpeq r1, 37
++ xor r1, r1, 55
++ jup 1540, r63
+  cmpeq r1, 17
++ xor r1, r1, 5
++ jup 1540, r63
+  cmpeq r1, 46
++ xor r1, r1, 13
++ jup 1540, r63
+  cmpeq r1, 39
++ xor r1, r1, 22
++ jup 1540, r63
+  cmpeq r1, 30
++ xor r1, r1, 15
++ jup 1540, r63
+  cmpeq r1, 57
++ xor r1, r1, 31
++ jup 1540, r63
+  cmpeq r1, 44
++ xor r1, r1, 30
++ jup 1540, r63
+  cmpeq r1, 5
++ xor r1, r1, 30
++ jup 1540, r63
+  cmpeq r1, 24
++ xor r1, r1, 43
++ jup 1540, r63
+  cmpeq r1, 40
++ xor r1, r1, 16
++ jup 1540, r63
+  cmpeq r1, 21
++ xor r1, r1, 31
++ jup 1540, r63
+  cmpeq r1, 33
++ xor r1, r1, 13
++ jup 1540, r63
+  cmpeq r1, 45
++ xor r1, r1, 51
++ jup 1540, r63
+  cmpeq r1, 52
++ xor r1, r1, 19
++ jup 1540, r63
+  cmpeq r1, 43
++ xor r1, r1, 22
++ jup 1540, r63
+  cmpeq r1, 47
++ xor r1, r1, 51
++ jup 1540, r63
+  cmpeq r1, 15
++ xor r1, r1, 42
++ jup 1540, r63
+  cmpeq r1, 1
++ xor r1, r1, 44
++ jup 1540, r63
+  cmpeq r1, 38
++ xor r1, r1, 7
++ jup 1540, r63
+  cmpeq r1, 62
++ xor r1, r1, 33
++ jup 1540, r63
+  lbl 1542, 0
+  xor r40, r40, 58
+  xor r41, r41, 18
+  xor r42, r42, 27
+  xor r43, r43, 11
+  xor r44, r44, 18
+  xor r45, r45, 1
+  and r1, r1, r0
+  lbl 1539, 0
+  ld r2, [r1+40]
+  io 2, r2
+  add r1, r1, 1
+  cmpne r1, 6
++ jup 1539, r0
+  jup 1543, r0
