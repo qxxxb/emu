@@ -1,4 +1,5 @@
 import unittest
+from ins import *
 from emu import *
 import io
 
@@ -192,31 +193,31 @@ class TestEmu(unittest.TestCase):
         self.assertEqual(rol(0b001011, 7), 0b100101)
 
     def test_shi(self):
-        # SHL
+        # SHLI
         emu = Emu()
         emu.mem[1] = 3
-        ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.SHL, 2)
+        ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.SHLI, 2)
         emu.execute(ins)
         self.assertEqual(emu.mem[2], 3 << 2)
 
-        # SHR
+        # SHRI
         emu = Emu()
         emu.mem[1] = 0b101110
-        ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.SHR, 2)
+        ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.SHRI, 2)
         emu.execute(ins)
         self.assertEqual(emu.mem[2], 0b001011)
 
-        # SAR
+        # SARI
         emu = Emu()
         emu.mem[1] = 0b101110
-        ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.SAR, 3)
+        ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.SARI, 3)
         emu.execute(ins)
         self.assertEqual(emu.mem[2], sar(0b101110, 3))
 
-        # ROL
+        # ROLI
         emu = Emu()
         emu.mem[1] = 0b101110
-        ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.ROL, 4)
+        ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.ROLI, 4)
         emu.execute(ins)
         self.assertEqual(emu.mem[2], rol(0b101110, 4))
 

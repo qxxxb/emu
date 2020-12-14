@@ -149,13 +149,21 @@ class Disasm:
         return disasm_func(ins)
 
     @staticmethod
-    def disasm_tape(tape, filename):
+    def disasm_tape(tape, out=sys.stdout, raw=False):
+        for i in range(len(tape)):
+            ins = tape[i]
+            if raw:
+                out.write(str(ins) + '\n')
+            else:
+                out.write(Disasm.disasm(ins) + '\n')
+
+    @staticmethod
+    def disasm_tape_to_file(tape, filename, raw=False):
         with open(filename, 'w') as f:
-            for i in range(len(tape)):
-                ins = tape[i]
-                f.write(Disasm.disasm(ins) + '\n')
+            Disasm.disasm_tape(tape, f, raw)
 
 
 if __name__ == '__main__':
     emu = Emu.from_filename('mandelflag.rom')
-    Disasm.disasm_tape(emu.tape, 'disasm.txt')
+    Disasm.disasm_tape_to_file(emu.tape, 'disasm.txt')
+    Disasm.disasm_tape_to_file(emu.tape, 'disasm_raw.txt', raw=True)

@@ -1,11 +1,12 @@
 import base64
 import logging
-from ins import *
 import sys
 from string import digits, ascii_uppercase
 import pickle
 import time
 
+from ins import *
+from disasm import *
 
 # Whether save the machine state when the key is requested
 make_pickle = False
@@ -52,6 +53,13 @@ class Mem:
     def __init__(self):
         self.data = [0] * 64
 
+    def dump(self):
+        n = 8
+        for i in range(0, len(self.data), n):
+            xs = self.data[i:i + n]
+            xs = [str(x).rjust(2) for x in xs]
+            print(' '.join(xs))
+
     def __getitem__(self, i):
         assert 0 <= self.data[i] < 64
         return self.data[i]
@@ -66,8 +74,9 @@ class Mem:
 
 
 def twos_comp(n, bits=6):
-    neg = n ^ Emu.mask
-    return (neg + 1) & Emu.mask
+    mask = (1 << bits) - 1
+    neg = n ^ mask
+    return (neg + 1) & mask
 
 
 def to_int(n, bits=6):
@@ -162,7 +171,7 @@ class Emu:
 
     def op_or(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = (self.mem[ra] | twos_comp(self.mem[rb])) & Emu.mask
+        self.mem[rd] = (self.mem[ra] | self.mem[rb]) & Emu.mask
 
     def op_ori(self, ins):
         rd, ra, ib = ins.a, ins.b, ins.c
@@ -234,13 +243,13 @@ class Emu:
     def op_shi(self, ins):
         (shi_type, rd, ra, ib) = ins.as_shi()
 
-        if shi_type == ShiType.SHL:
+        if shi_type == ShiType.SHLI:
             self.mem[rd] = (self.mem[ra] << ib) & Emu.mask
-        elif shi_type == ShiType.SHR:
+        elif shi_type == ShiType.SHRI:
             self.mem[rd] = (self.mem[ra] >> ib) & Emu.mask
-        elif shi_type == ShiType.SAR:
+        elif shi_type == ShiType.SARI:
             self.mem[rd] = (sar(self.mem[ra], ib)) & Emu.mask
-        elif shi_type == ShiType.ROL:
+        elif shi_type == ShiType.ROLI:
             self.mem[rd] = (rol(self.mem[ra], ib)) & Emu.mask
         else:
             raise ValueError('Unhandled shi_type: {}'.format(shi_type))
@@ -303,11 +312,12 @@ class Emu:
         if ix == IoDevice.SERIAL_INCOMING:
             if make_pickle:
                 # After printing the mandelprot, it will ask for a key.
-                # Here, we save the machine state here so we can analyze it
-                # more closely.
+                # Here, we save the machine state so we can analyze it later.
                 with open('emu_state.pkl', 'wb') as f:
                     pickle.dump(emu, f)
+                print('Pickled emu state!')
 
+            # TODO: Might want to make this more flexible
             # Read more input if we don't have any in the buffer
             while len(self.buffer) == 0:
                 s = input('> ')
@@ -316,6 +326,7 @@ class Emu:
             # Send the length of buffer
             self.mem[rd] = from_int(len(self.buffer)) & Emu.mask
         elif ix == IoDevice.SERIAL_READ:
+            # TODO: Might want to make this more flexible
             # Read more input if we don't have any in the buffer
             while len(self.buffer) == 0:
                 s = input('> ')
@@ -336,13 +347,10 @@ class Emu:
             out.write(c)
             out.flush()
         elif ix == IoDevice.CLOCK_LO_CS:
-            ans = self.clock & 0o77  # Lower 6 bits of clock
-            self.mem[rd] = ans
+            self.mem[rd] = self.clock & 0o77  # Lower 6 bits of clock
         elif ix == IoDevice.CLOCK_HI_CS:
             # Upper 6 bits of clock
-            ans = self.clock & 0o7700
-            ans = ans >> 6
-            self.mem[rd] = ans
+            self.mem[rd] = (self.clock & 0o7700) >> 6
         else:
             logging.warning('Unknown IO device')
             self.halted = True
@@ -407,14 +415,81 @@ class Emu:
             elapsed = round(elapsed, 2)
             elapsed = int(elapsed * 100)
 
-            # TODO: Is it really not supposed to wrap around?
+            # Clock is not supposed to overflow or wrap around.
+            # This means that the program must run in under 40.95 seconds.
             self.clock = max(elapsed, 0o7777)
-            # self.clock = (self.clock + 1) & 0o7777
 
         if log_inss:
             return inss_log
 
+    def execute_dbg_cmd(self, cmd):
+        '''Return value: whether to go to the next instruction or not'''
+        cmd = cmd.split()
+        if len(cmd) == 0:
+            print('No cmd')
+            return False
+
+        try:
+            if cmd[0] == 'p':
+                i = int(cmd[1])
+                print('[{}] = {}'.format(i, self.mem[i]))
+            elif cmd[0] == 'mem':
+                self.mem.dump()
+            elif cmd[0] == 'l':
+                inss = self.tape[self.pc: self.pc + 5]
+                disasm = Disasm.disasm_tape(inss)
+                print(disasm)
+            elif cmd[0] in {'n', 's'}:
+                return True
+            elif cmd[0] == 'q':
+                self.halted = True
+                return True
+            elif cmd[0] == 'c':
+                self.stepping = False
+                return True
+            else:
+                print('Unknown cmd')
+                return False
+        except ValueError:
+            print('Error processing cmd')
+            return False
+
+    def run_dbg(self):
+        self.clock = 0
+        self.stepping = True
+        prev_cmd = None
+
+        while not self.halted:
+            ins = self.tape[self.pc]
+            print('{}: {}'.format(self.pc, Disasm.disasm(ins)))
+
+            if self.stepping:
+                while True:
+                    cmd = input('edb> ')
+                    if cmd == '' and prev_cmd:
+                        cmd = prev_cmd
+
+                    go_next = self.execute_dbg_cmd(cmd)
+                    prev_cmd = cmd
+                    if go_next:
+                        break
+
+            self.execute(ins)
+            self.pc = (self.pc + 1) % len(self.tape)  # Tape is looped
+
+            # Use fake clock where each instruction takes one centisecond
+            self.clock = max(self.clock + 1, 0o7777)
+
 
 if __name__ == '__main__':
+    use_dbg = False
+
+    if len(sys.argv) >= 2:
+        use_dbg = 'd' in sys.argv[1]
+        make_pickle = 'p' in sys.argv[1]
+
     emu = Emu.from_filename('mandelflag.rom')
-    emu.run()
+    if use_dbg:
+        emu.run_dbg()
+    else:
+        emu.run()

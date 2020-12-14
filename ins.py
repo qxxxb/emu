@@ -56,10 +56,10 @@ class Cm(Enum):
 
 class ShiType(Enum):
     '''Shift/rotate by immediate variants'''
-    SHL = 0o0  # Logical left shift
-    SHR = 0o1  # Logical right shift
-    SAR = 0o2  # Arithmetic right shift
-    ROL = 0o3  # Rotate
+    SHLI = 0o0  # Logical left shift
+    SHRI = 0o1  # Logical right shift
+    SARI = 0o2  # Arithmetic right shift
+    ROLI = 0o3  # Rotate
 
 
 class FmType(Enum):
