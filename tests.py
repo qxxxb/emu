@@ -15,153 +15,153 @@ class TestIns(unittest.TestCase):
 class TestEmu(unittest.TestCase):
     def test_add(self):
         emu = Emu()
-        emu.mem[1] = 5
-        emu.mem[2] = 7
+        emu.regs[1] = 5
+        emu.regs[2] = 7
         ins = Ins.from_values(Op.ADD, Cond.UN, 3, 1, 2)
         emu.execute(ins)
-        self.assertEqual(emu.mem[3], 12)
+        self.assertEqual(emu.regs[3], 12)
 
         # Almost overflow
         emu = Emu()
-        emu.mem[1] = 0o77 - 5
-        emu.mem[2] = 5
+        emu.regs[1] = 0o77 - 5
+        emu.regs[2] = 5
         ins = Ins.from_values(Op.ADD, Cond.UN, 3, 1, 2)
         emu.execute(ins)
-        self.assertEqual(emu.mem[3], 0o77)
+        self.assertEqual(emu.regs[3], 0o77)
 
         # Overflow
         emu = Emu()
-        emu.mem[1] = 0o77 - 5
-        emu.mem[2] = 7
+        emu.regs[1] = 0o77 - 5
+        emu.regs[2] = 7
         ins = Ins.from_values(Op.ADD, Cond.UN, 3, 1, 2)
         emu.execute(ins)
-        self.assertEqual(emu.mem[3], 1)
+        self.assertEqual(emu.regs[3], 1)
 
     def test_addi(self):
         emu = Emu()
-        emu.mem[1] = 5
+        emu.regs[1] = 5
         ins = Ins.from_values(Op.ADDI, Cond.UN, 3, 1, 7)
         emu.execute(ins)
-        self.assertEqual(emu.mem[3], 12)
+        self.assertEqual(emu.regs[3], 12)
 
     def test_sub(self):
         emu = Emu()
-        emu.mem[1] = 13
-        emu.mem[2] = 8
+        emu.regs[1] = 13
+        emu.regs[2] = 8
         ins = Ins.from_values(Op.SUB, Cond.UN, 3, 1, 2)
         emu.execute(ins)
-        self.assertEqual(emu.mem[3], 5)
+        self.assertEqual(emu.regs[3], 5)
 
         # Almost underflow
         emu = Emu()
-        emu.mem[1] = 13
-        emu.mem[2] = 13
+        emu.regs[1] = 13
+        emu.regs[2] = 13
         ins = Ins.from_values(Op.SUB, Cond.UN, 3, 1, 2)
         emu.execute(ins)
-        self.assertEqual(emu.mem[3], 0)
+        self.assertEqual(emu.regs[3], 0)
 
         # Underflow
         emu = Emu()
-        emu.mem[1] = 13
-        emu.mem[2] = 14
+        emu.regs[1] = 13
+        emu.regs[2] = 14
         ins = Ins.from_values(Op.SUB, Cond.UN, 3, 1, 2)
         emu.execute(ins)
-        self.assertEqual(emu.mem[3], from_int(-1))
+        self.assertEqual(emu.regs[3], from_int(-1))
 
     def test_cmp_eq(self):
         emu = Emu()
-        emu.mem[1] = 5
-        emu.mem[2] = 7
+        emu.regs[1] = 5
+        emu.regs[2] = 7
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.EQ, 1, 2)
         emu.execute(ins)
         self.assertFalse(emu.cf)
 
         emu = Emu()
-        emu.mem[1] = 5
+        emu.regs[1] = 5
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_IB, Cm.EQ, 1, 7)
         emu.execute(ins)
         self.assertFalse(emu.cf)
 
         emu = Emu()
-        emu.mem[1] = 5
-        emu.mem[2] = 5
+        emu.regs[1] = 5
+        emu.regs[2] = 5
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.EQ, 1, 2)
         emu.execute(ins)
         self.assertTrue(emu.cf)
 
     def test_cmp_sl_pos_pos(self):
         emu = Emu()
-        emu.mem[1] = 5
-        emu.mem[2] = 7
+        emu.regs[1] = 5
+        emu.regs[2] = 7
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.SL, 1, 2)
         emu.execute(ins)
         self.assertTrue(emu.cf)
 
         emu = Emu()
-        emu.mem[1] = 5
-        emu.mem[2] = 5
+        emu.regs[1] = 5
+        emu.regs[2] = 5
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.SL, 1, 2)
         emu.execute(ins)
         self.assertFalse(emu.cf)
 
     def test_cmp_sl_pos_neg(self):
         emu = Emu()
-        emu.mem[1] = 5
-        emu.mem[2] = from_int(-7)
+        emu.regs[1] = 5
+        emu.regs[2] = from_int(-7)
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.SL, 1, 2)
         emu.execute(ins)
         self.assertFalse(emu.cf)
 
         emu = Emu()
-        emu.mem[1] = from_int(-5)
-        emu.mem[2] = 5
+        emu.regs[1] = from_int(-5)
+        emu.regs[2] = 5
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.SL, 1, 2)
         emu.execute(ins)
         self.assertTrue(emu.cf)
 
     def test_cmp_sl_neg_neg(self):
         emu = Emu()
-        emu.mem[1] = from_int(-5)
-        emu.mem[2] = from_int(-7)
+        emu.regs[1] = from_int(-5)
+        emu.regs[2] = from_int(-7)
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.SL, 1, 2)
         emu.execute(ins)
         self.assertFalse(emu.cf)
 
         emu = Emu()
-        emu.mem[1] = from_int(-13)
-        emu.mem[2] = from_int(-5)
+        emu.regs[1] = from_int(-13)
+        emu.regs[2] = from_int(-5)
         ins = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.SL, 1, 2)
         emu.execute(ins)
         self.assertTrue(emu.cf)
 
     def test_op_cond(self):
         emu = Emu()
-        emu.mem[1] = 5
-        emu.mem[2] = 5
+        emu.regs[1] = 5
+        emu.regs[2] = 5
         ins_cmp = Ins.from_cmp(Cond.UN, CmpType.RA_RB, Cm.EQ, 1, 2)
         emu.execute(ins_cmp)
 
         # Should execute
-        emu.mem[3] = 5
-        emu.mem[4] = 7
+        emu.regs[3] = 5
+        emu.regs[4] = 7
         ins_un = Ins.from_values(Op.ADD, Cond.UN, 5, 3, 4)
         emu.execute(ins_un)
 
         # Should execute
-        emu.mem[6] = 5
-        emu.mem[7] = 7
+        emu.regs[6] = 5
+        emu.regs[7] = 7
         ins_tr = Ins.from_values(Op.ADD, Cond.TR, 8, 6, 7)
         emu.execute(ins_tr)
 
         # Should not execute
-        emu.mem[9] = 5
-        emu.mem[10] = 7
+        emu.regs[9] = 5
+        emu.regs[10] = 7
         ins_fa = Ins.from_values(Op.ADD, Cond.FA, 11, 9, 10)
         emu.execute(ins_fa)
 
-        self.assertEqual(emu.mem[5], 12)
-        self.assertEqual(emu.mem[8], 12)
-        self.assertEqual(emu.mem[11], 0)
+        self.assertEqual(emu.regs[5], 12)
+        self.assertEqual(emu.regs[8], 12)
+        self.assertEqual(emu.regs[11], 0)
 
     def test_sar(self):
         self.assertEqual(sar(0b001011, 0), 0b001011)
@@ -195,111 +195,111 @@ class TestEmu(unittest.TestCase):
     def test_shi(self):
         # SHLI
         emu = Emu()
-        emu.mem[1] = 3
+        emu.regs[1] = 3
         ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.SHLI, 2)
         emu.execute(ins)
-        self.assertEqual(emu.mem[2], 3 << 2)
+        self.assertEqual(emu.regs[2], 3 << 2)
 
         # SHRI
         emu = Emu()
-        emu.mem[1] = 0b101110
+        emu.regs[1] = 0b101110
         ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.SHRI, 2)
         emu.execute(ins)
-        self.assertEqual(emu.mem[2], 0b001011)
+        self.assertEqual(emu.regs[2], 0b001011)
 
         # SARI
         emu = Emu()
-        emu.mem[1] = 0b101110
+        emu.regs[1] = 0b101110
         ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.SARI, 3)
         emu.execute(ins)
-        self.assertEqual(emu.mem[2], sar(0b101110, 3))
+        self.assertEqual(emu.regs[2], sar(0b101110, 3))
 
         # ROLI
         emu = Emu()
-        emu.mem[1] = 0b101110
+        emu.regs[1] = 0b101110
         ins = Ins.from_shi(Cond.UN, 2, 1, ShiType.ROLI, 4)
         emu.execute(ins)
-        self.assertEqual(emu.mem[2], rol(0b101110, 4))
+        self.assertEqual(emu.regs[2], rol(0b101110, 4))
 
     def test_ld(self):
         # LD without offset
         emu = Emu()
-        emu.mem[1] = 3
-        emu.mem[3] = 7
+        emu.regs[1] = 3
+        emu.regs[3] = 7
         ins = Ins.from_values(Op.LD, Cond.UN, 2, 1, 0)
         emu.execute(ins)
-        self.assertEqual(emu.mem[2], 7)
+        self.assertEqual(emu.regs[2], 7)
 
         # LD with offset
         emu = Emu()
-        emu.mem[1] = 5
-        emu.mem[3] = 7
+        emu.regs[1] = 5
+        emu.regs[3] = 7
         ins = Ins.from_values(Op.LD, Cond.UN, 2, 1, from_int(-2))
         emu.execute(ins)
-        self.assertEqual(emu.mem[2], 7)
+        self.assertEqual(emu.regs[2], 7)
 
     def test_st(self):
         # ST without offset
         emu = Emu()
-        emu.mem[1] = 19
-        emu.mem[3] = 2
+        emu.regs[1] = 19
+        emu.regs[3] = 2
         ins = Ins.from_values(Op.ST, Cond.UN, 1, 3, 0)
         emu.execute(ins)
-        self.assertEqual(emu.mem[2], 19)
+        self.assertEqual(emu.regs[2], 19)
 
         # ST with offset
         emu = Emu()
-        emu.mem[1] = 19
-        emu.mem[3] = 7
+        emu.regs[1] = 19
+        emu.regs[3] = 7
         ins = Ins.from_values(Op.ST, Cond.UN, 1, 3, from_int(-5))
         emu.execute(ins)
-        self.assertEqual(emu.mem[2], 19)
+        self.assertEqual(emu.regs[2], 19)
 
     def test_fm(self):
         # Unsigned, 0 fractional bits
         emu = Emu()
-        emu.mem[1] = 20
-        emu.mem[2] = 5
+        emu.regs[1] = 20
+        emu.regs[2] = 5
         ins = Ins.from_fm(Cond.UN, 1, 2, FmType.U, 0)
         emu.execute(ins)
-        self.assertEqual(emu.mem[1], (20 * 5) & 0b111111)
+        self.assertEqual(emu.regs[1], (20 * 5) & 0b111111)
 
         # Unsigned, 3 fractional bits
         emu = Emu()
-        emu.mem[1] = 20
-        emu.mem[2] = 5
+        emu.regs[1] = 20
+        emu.regs[2] = 5
         ins = Ins.from_fm(Cond.UN, 1, 2, FmType.U, 3)
         emu.execute(ins)
-        self.assertEqual(emu.mem[1], ((20 * 5) >> 3) & 0b111111)
+        self.assertEqual(emu.regs[1], ((20 * 5) >> 3) & 0b111111)
 
         # Signed, 0 fractional bits
         emu = Emu()
-        emu.mem[1] = 20
-        emu.mem[2] = 5
+        emu.regs[1] = 20
+        emu.regs[2] = 5
         ins = Ins.from_fm(Cond.UN, 1, 2, FmType.S, 0)
         emu.execute(ins)
-        self.assertEqual(emu.mem[1], (20 * 5) & 0b111111)
+        self.assertEqual(emu.regs[1], (20 * 5) & 0b111111)
 
         # Signed, 3 fractional bits
         emu = Emu()
-        emu.mem[1] = 20
-        emu.mem[2] = 5
+        emu.regs[1] = 20
+        emu.regs[2] = 5
         ins = Ins.from_fm(Cond.UN, 1, 2, FmType.S, 3)
         emu.execute(ins)
-        self.assertEqual(emu.mem[1], sar((20 * 5), 3, 12) & 0b111111)
+        self.assertEqual(emu.regs[1], sar((20 * 5), 3, 12) & 0b111111)
 
         # Signed, 9 fractional bits
         emu = Emu()
-        emu.mem[1] = 0o77
-        emu.mem[2] = 0o77
+        emu.regs[1] = 0o77
+        emu.regs[2] = 0o77
         ins = Ins.from_fm(Cond.UN, 1, 2, FmType.S, 9)
         emu.execute(ins)
-        self.assertEqual(emu.mem[1], sar((0o77 * 0o77), 9, 12) & 0b111111)
+        self.assertEqual(emu.regs[1], sar((0o77 * 0o77), 9, 12) & 0b111111)
 
     def test_control_flow(self):
         emu = Emu()
-        emu.mem[1] = 33
-        emu.mem[2] = 44
+        emu.regs[1] = 33
+        emu.regs[2] = 44
         emu.tape = Tape.from_inss([
             Ins.from_values(Op.ADD, Cond.UN, 14, 0, 58),  # 0
             Ins.from_values(Op.ADD, Cond.UN, 15, 0, 0),  # 1
@@ -318,7 +318,7 @@ class TestEmu(unittest.TestCase):
             Ins.from_values(Op.ADD, Cond.UN, 20, 0, 0),  # 14
             Ins.from_values(Op.LBL, Cond.UN, 10, 0, 44),  # 15 <--
             Ins.from_values(Op.ADD, Cond.UN, 21, 0, 0),  # 16
-            Ins.invalid(),  # 17
+            Ins.halt(),  # 17
             Ins.from_values(Op.ADD, Cond.UN, 22, 0, 0),  # 18
             Ins.from_values(Op.ADD, Cond.UN, 23, 0, 0),  # 19
         ])
@@ -331,7 +331,7 @@ class TestEmu(unittest.TestCase):
 
     def test_jup_vs_jdn(self):
         emu = Emu()
-        emu.mem[63] = 33
+        emu.regs[63] = 33
         emu.tape = Tape.from_inss([
             Ins.from_values(Op.ADD, Cond.UN, 10, 0, 0),  # 0
             Ins.from_values(Op.ADD, Cond.UN, 10, 0, 0),  # 1
@@ -344,7 +344,7 @@ class TestEmu(unittest.TestCase):
             Ins.from_values(Op.ADD, Cond.UN, 10, 0, 0),  # 8
             Ins.from_values(Op.ADD, Cond.UN, 10, 0, 0),  # 9
             Ins.from_values(Op.LBL, Cond.UN, 16, 3, 33),  # 10 <--
-            Ins.invalid(),  # 11
+            Ins.halt(),  # 11
         ])
         inss = emu.run(log_inss=True)
 
@@ -360,7 +360,7 @@ class TestEmu(unittest.TestCase):
         # TODO: Broken
         emu.out = out
 
-        emu.mem[1] = 0o12
+        emu.regs[1] = 0o12
         ins = Ins.from_io(Cond.UN, 0, IoDevice.SERIAL_WRITE, 1)
         emu.execute(ins)
 

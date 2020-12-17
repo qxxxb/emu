@@ -13,8 +13,8 @@ class Disasm:
             return '-'
 
     @staticmethod
-    def disasm_inv(ins):
-        return '  ' + 'INV'
+    def disasm_hlt(ins):
+        return '  ' + 'HLT'
 
     @staticmethod
     def disasm_values(ins):
@@ -120,7 +120,7 @@ class Disasm:
         )
 
     disasm_switch = {
-        Op.INV: disasm_inv.__func__,
+        Op.HLT: disasm_hlt.__func__,
         Op.ADD: disasm_rrr.__func__,
         Op.ADDI: disasm_rri.__func__,
         Op.SUB: disasm_rrr.__func__,
@@ -155,7 +155,7 @@ class Disasm:
             if raw:
                 out.write(str(ins) + '\n')
             else:
-                out.write(Disasm.disasm(ins) + '\n')
+                out.write('{:0>3}: {}\n'.format(i, Disasm.disasm(ins)))
 
     @staticmethod
     def disasm_tape_to_file(tape, filename, raw=False):
@@ -164,6 +164,8 @@ class Disasm:
 
 
 if __name__ == '__main__':
-    emu = Emu.from_filename('mandelflag.rom')
-    Disasm.disasm_tape_to_file(emu.tape, 'disasm.txt')
-    Disasm.disasm_tape_to_file(emu.tape, 'disasm_raw.txt', raw=True)
+    emu = Emu.from_filename('talkative-client.rom')
+    Disasm.disasm_tape_to_file(emu.tape, 'talkative-client.asm')
+
+    emu = Emu.from_filename('talkative-server.rom')
+    Disasm.disasm_tape_to_file(emu.tape, 'talkative-server.asm')

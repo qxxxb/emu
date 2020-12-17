@@ -24,7 +24,7 @@ class Op(Enum):
     JDN = 0o021  # Jump downwards
     IO = 0o022
     FM = 0o023  # Fixed-point multiply
-    INV = 0o024  # Invalid
+    HLT = 0o024  # Halt
 
 
 class Cond(Enum):
@@ -70,11 +70,15 @@ class FmType(Enum):
 
 class IoDevice(Enum):
     '''Io device (specified by ix)'''
-    SERIAL_INCOMING = 0
-    SERIAL_READ = 1
-    SERIAL_WRITE = 2
-    CLOCK_LO_CS = 3
-    CLOCK_HI_CS = 4
+    SERIAL_INCOMING = 0o000
+    SERIAL_READ = 0o001
+    SERIAL_WRITE = 0o002
+    CLOCK_LO_CS = 0o003
+    CLOCK_HI_CS = 0o004
+    ENET_INCOMING = 0o010
+    ENET_RECV = 0o011
+    ENET_SEND = 0o012
+    ENET_CONN_CTRL = 0o013
 
 
 class Ins:
@@ -107,9 +111,9 @@ class Ins:
         return (self.op, self.cond, self.a, self.b, self.c)
 
     @classmethod
-    def invalid(cls):
+    def halt(cls):
         ans = cls()
-        ans.op, ans.cond = Op.INV, Cond.UN
+        ans.op, ans.cond = Op.HLT, Cond.UN
         ans.a, ans.b, ans.c = 0, 0, 0
         ans.check()
         return ans
@@ -216,18 +220,13 @@ class Ins:
         # Otherwise:
         # opc = 21*cond + op + 1
         if opc == 0:
-            return Ins.invalid()
+            return Ins.halt()
         else:
             # opc - 1 = 21*cond + op
             # imm = 21*cond + op
             imm = opc - 1
             op = imm % 21
             cond = imm // 21
-
-            # op = 20 is reserved for future extensions, so executing it should
-            # halt the computer
-            if op == 20:
-                return Ins.invalid()
 
             ans.op = Op(op)
             ans.cond = Cond(cond)

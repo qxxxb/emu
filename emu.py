@@ -2,14 +2,11 @@ import base64
 import logging
 import sys
 from string import digits, ascii_uppercase
-import pickle
 import time
+import traceback
 
 from ins import *
 from disasm import *
-
-# Whether save the machine state when the key is requested
-make_pickle = False
 
 
 class Tape:
@@ -45,9 +42,9 @@ class Tape:
         return str(self.data)
 
 
-class Mem:
+class Regs:
     '''
-    Array of 64 6-bit elements.
+    64 registers that are 6-bit elements each.
     '''
 
     def __init__(self):
@@ -121,22 +118,27 @@ def chr_from_serial(n):
     return serial_dict[n]
 
 
+def str_from_serial(ns):
+    return ''.join([chr_from_serial(n) for n in ns])
+
+
 def serial_from_chr(c):
     return serial_dict.index(c)
 
 
+def serial_from_str(s):
+    return bytearray([serial_from_chr(c) for c in s])
+
+
 class Emu:
     def __init__(self):
-        self.mem = Mem()
+        self.regs = Regs()
         self.pc = 0
         self.halted = False
         self.cf = False
         self.clock = 0
         self.buffer = ''
-
-        # For some reason, pickle can't work with file streams
-        if not make_pickle:
-            self.out = sys.stdout
+        self.out = sys.stdout
 
     @classmethod
     def from_filename(cls, filename):
@@ -148,55 +150,54 @@ class Emu:
 
     # Ops
 
-    def op_inv(self, ins):
-        logging.warning('Invalid instruction')
+    def op_hlt(self, ins):
         self.halted = True
 
     # Arithmetic and logic
 
     def op_add(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = self.mem[ra] + self.mem[rb]
+        self.regs[rd] = self.regs[ra] + self.regs[rb]
 
     def op_addi(self, ins):
         rd, ra, ib = ins.a, ins.b, ins.c
-        self.mem[rd] = self.mem[ra] + ib
+        self.regs[rd] = self.regs[ra] + ib
 
     def op_sub(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = self.mem[ra] + twos_comp(self.mem[rb])
+        self.regs[rd] = self.regs[ra] + twos_comp(self.regs[rb])
 
     def op_or(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = self.mem[ra] | self.mem[rb]
+        self.regs[rd] = self.regs[ra] | self.regs[rb]
 
     def op_ori(self, ins):
         rd, ra, ib = ins.a, ins.b, ins.c
-        self.mem[rd] = self.mem[ra] | ib
+        self.regs[rd] = self.regs[ra] | ib
 
     def op_xor(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = self.mem[ra] ^ twos_comp(self.mem[rb])
+        self.regs[rd] = self.regs[ra] ^ twos_comp(self.regs[rb])
 
     def op_xori(self, ins):
         rd, ra, ib = ins.a, ins.b, ins.c
-        self.mem[rd] = self.mem[ra] ^ ib
+        self.regs[rd] = self.regs[ra] ^ ib
 
     def op_and(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = self.mem[ra] & twos_comp(self.mem[rb])
+        self.regs[rd] = self.regs[ra] & twos_comp(self.regs[rb])
 
     def op_andi(self, ins):
         rd, ra, ib = ins.a, ins.b, ins.c
-        self.mem[rd] = self.mem[ra] & ib
+        self.regs[rd] = self.regs[ra] & ib
 
     def op_shl(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = self.mem[ra] << self.mem[rb]
+        self.regs[rd] = self.regs[ra] << self.regs[rb]
 
     def op_shr(self, ins):
         rd, ra, rb = ins.a, ins.b, ins.c
-        self.mem[rd] = self.mem[ra] >> self.mem[rb]
+        self.regs[rd] = self.regs[ra] >> self.regs[rb]
 
     # Comparison
 
@@ -205,17 +206,17 @@ class Emu:
 
         # Determine left and right sides of comparison
         if cmp_type == CmpType.RA_RB:
-            left = self.mem[a]
-            right = self.mem[b]
+            left = self.regs[a]
+            right = self.regs[b]
         elif cmp_type == CmpType.RB_RA:
-            left = self.mem[b]
-            right = self.mem[a]
+            left = self.regs[b]
+            right = self.regs[a]
         elif cmp_type == CmpType.RA_IB:
-            left = self.mem[a]
+            left = self.regs[a]
             right = b
         elif cmp_type == CmpType.IA_RB:
             left = a
-            right = self.mem[b]
+            right = self.regs[b]
 
         # Do comparison
         if cm == Cm.TR:
@@ -241,45 +242,45 @@ class Emu:
         (shi_type, rd, ra, ib) = ins.as_shi()
 
         if shi_type == ShiType.SHLI:
-            self.mem[rd] = self.mem[ra] << ib
+            self.regs[rd] = self.regs[ra] << ib
         elif shi_type == ShiType.SHRI:
-            self.mem[rd] = self.mem[ra] >> ib
+            self.regs[rd] = self.regs[ra] >> ib
         elif shi_type == ShiType.SARI:
-            self.mem[rd] = sar(self.mem[ra], ib)
+            self.regs[rd] = sar(self.regs[ra], ib)
         elif shi_type == ShiType.ROLI:
-            self.mem[rd] = rol(self.mem[ra], ib)
+            self.regs[rd] = rol(self.regs[ra], ib)
         else:
             raise ValueError('Unhandled shi_type: {}'.format(shi_type))
 
     def op_ld(self, ins):
         rd, ra, ib = ins.a, ins.b, ins.c
-        rs = (self.mem[ra] + ib) & 0o77
-        self.mem[rd] = self.mem[rs]
+        rs = (self.regs[ra] + ib) & 0o77
+        self.regs[rd] = self.regs[rs]
 
     def op_st(self, ins):
         rs, ra, ib = ins.a, ins.b, ins.c
-        rd = (self.mem[ra] + ib) & 0o77
-        self.mem[rd] = self.mem[rs]
+        rd = (self.regs[ra] + ib) & 0o77
+        self.regs[rd] = self.regs[rs]
 
     def op_fm(self, ins):
         (fm_type, pr, rd, ra) = ins.as_fm()
 
         # 12 bit buffer
-        ans = (self.mem[rd] * self.mem[ra]) & 0o7777
+        ans = (self.regs[rd] * self.regs[ra]) & 0o7777
         if fm_type == FmType.U:
             ans = ans >> pr
         else:
             ans = sar(ans, pr, bits=12)
 
         # `ans` will be deduce back to 6 bits when stored
-        self.mem[rd] = ans
+        self.regs[rd] = ans
 
     def op_lbl(self, ins):
         # Do nothing
         pass
 
     def op_jup(self, ins, reverse=False):
-        key = (ins.partial_jump_key(), self.mem[ins.c])
+        key = (ins.partial_jump_key(), self.regs[ins.c])
 
         # Search for the label matching key
         start = self.pc
@@ -305,54 +306,42 @@ class Emu:
 
     def op_io(self, ins):
         (rd, ix, rs) = ins.as_io()
-        if ix == IoDevice.SERIAL_INCOMING:
-            if make_pickle:
-                # After printing the mandelprot, it will ask for a key.
-                # Here, we save the machine state so we can analyze it later.
-                with open('emu_state.pkl', 'wb') as f:
-                    pickle.dump(emu, f)
-                print('Pickled emu state!')
 
-            # TODO: Might want to make this more flexible
-            # Read more input if we don't have any in the buffer
-            while len(self.buffer) == 0:
-                s = input('> ')
-                self.buffer += s
+        def get_input():
+            s = input('> ') + '\n'
+            self.buffer += s
+
+        if ix == IoDevice.SERIAL_INCOMING:
+            # Optionally read more input if we don't have any in the buffer
+            if len(self.buffer) == 0:
+                get_input()
 
             # Send the length of buffer
-            self.mem[rd] = from_int(len(self.buffer))
+            self.regs[rd] = from_int(len(self.buffer))
         elif ix == IoDevice.SERIAL_READ:
-            # TODO: Might want to make this more flexible
-            # Read more input if we don't have any in the buffer
-            while len(self.buffer) == 0:
-                s = input('> ')
-                self.buffer += s
+            # Optionally read more input if we don't have any in the buffer
+            if len(self.buffer) == 0:
+                get_input()
 
             # Pop the first char and send it
             c = self.buffer[0]
             self.buffer = self.buffer[1:]
-            self.mem[rd] = from_int(serial_from_chr(c))
+            self.regs[rd] = from_int(serial_from_chr(c))
         elif ix == IoDevice.SERIAL_WRITE:
-            c = chr_from_serial(self.mem[rs])
-
-            if make_pickle:
-                out = sys.stdout
-            else:
-                out = self.out
-
-            out.write(c)
-            out.flush()
+            c = chr_from_serial(self.regs[rs])
+            self.out.write(c)
+            self.out.flush()
         elif ix == IoDevice.CLOCK_LO_CS:
-            self.mem[rd] = self.clock & 0o77  # Lower 6 bits of clock
+            self.regs[rd] = self.clock & 0o77  # Lower 6 bits of clock
         elif ix == IoDevice.CLOCK_HI_CS:
             # Upper 6 bits of clock
-            self.mem[rd] = (self.clock & 0o7700) >> 6
+            self.regs[rd] = (self.clock & 0o7700) >> 6
         else:
             logging.warning('Unknown IO device')
             self.halted = True
 
     op_switch = {
-        Op.INV: op_inv,
+        Op.HLT: op_hlt,
         Op.ADD: op_add,
         Op.ADDI: op_addi,
         Op.SUB: op_sub,
@@ -428,9 +417,9 @@ class Emu:
         try:
             if cmd[0] == 'p':
                 i = int(cmd[1])
-                print('[{}] = {}'.format(i, self.mem[i]))
-            elif cmd[0] == 'mem':
-                self.mem.dump()
+                print('[{}] = {}'.format(i, self.regs[i]))
+            elif cmd[0] == 'reg':
+                self.regs.dump()
             elif cmd[0] == 'l':
                 inss = self.tape[self.pc: self.pc + 5]
                 disasm = Disasm.disasm_tape(inss)
@@ -479,13 +468,26 @@ class Emu:
 
 if __name__ == '__main__':
     use_dbg = False
+    run_server = False
 
     if len(sys.argv) >= 2:
+        run_server = 's' in sys.argv[1]
         use_dbg = 'd' in sys.argv[1]
-        make_pickle = 'p' in sys.argv[1]
 
-    emu = Emu.from_filename('mandelflag.rom')
-    if use_dbg:
-        emu.run_dbg()
+    if run_server:
+        filename = 'talkative-server-redacted.rom'
     else:
-        emu.run()
+        filename = 'talkative-client.rom'
+
+    emu = Emu.from_filename(filename)
+
+    try:
+        if use_dbg:
+            emu.run_dbg()
+        else:
+            emu.run()
+    except KeyboardInterrupt:
+        traceback.print_exc(file=sys.stdout)
+        # Print the PC before we quit
+        print('EMU PC:', emu.pc)
+        sys.exit(1)
