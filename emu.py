@@ -304,38 +304,61 @@ class Emu:
     def op_jdn(self, ins):
         self.op_jup(ins, reverse=True)
 
+    def get_input(self):
+        s = input('> ')
+        self.buffer += s
+
+    def op_io_serial_incoming(self, ins):
+        (rd, ix_, rs) = ins.as_io()
+
+        # Optionally read more input if we don't have any in the buffer
+        if len(self.buffer) == 0:
+            self.get_input()
+
+        # Send the length of buffer
+        self.regs[rd] = from_int(len(self.buffer))
+
+    def op_io_serial_read(self, ins):
+        (rd, ix_, rs) = ins.as_io()
+
+        # Optionally read more input if we don't have any in the buffer
+        if len(self.buffer) == 0:
+            self.get_input()
+
+        # Pop the first char and send it
+        c = self.buffer[0]
+        self.buffer = self.buffer[1:]
+        self.regs[rd] = from_int(serial_from_chr(c))
+
+    def op_io_serial_write(self, ins):
+        (rd, ix_, rs) = ins.as_io()
+        c = chr_from_serial(self.regs[rs])
+        self.out.write(c)
+        self.out.flush()
+
+    def op_io_clock_lo_cs(self, ins):
+        (rd, ix_, rs_) = ins.as_io()
+        self.regs[rd] = self.clock & 0o77  # Lower 6 bits of clock
+
+    def op_io_clock_hi_cs(self, ins):
+        (rd, ix_, rs_) = ins.as_io()
+        # Upper 6 bits of clock
+        self.regs[rd] = (self.clock & 0o7700) >> 6
+
+    op_io_switch = {
+        IoDevice.SERIAL_INCOMING: op_io_serial_incoming,
+        IoDevice.SERIAL_READ: op_io_serial_read,
+        IoDevice.SERIAL_WRITE: op_io_serial_write,
+        IoDevice.CLOCK_LO_CS: op_io_clock_lo_cs,
+        IoDevice.CLOCK_HI_CS: op_io_clock_hi_cs,
+        IoDevice.CLOCK_HI_CS: op_io_clock_hi_cs
+    }
+
     def op_io(self, ins):
         (rd, ix, rs) = ins.as_io()
-
-        def get_input():
-            s = input('> ') + '\n'
-            self.buffer += s
-
-        if ix == IoDevice.SERIAL_INCOMING:
-            # Optionally read more input if we don't have any in the buffer
-            if len(self.buffer) == 0:
-                get_input()
-
-            # Send the length of buffer
-            self.regs[rd] = from_int(len(self.buffer))
-        elif ix == IoDevice.SERIAL_READ:
-            # Optionally read more input if we don't have any in the buffer
-            if len(self.buffer) == 0:
-                get_input()
-
-            # Pop the first char and send it
-            c = self.buffer[0]
-            self.buffer = self.buffer[1:]
-            self.regs[rd] = from_int(serial_from_chr(c))
-        elif ix == IoDevice.SERIAL_WRITE:
-            c = chr_from_serial(self.regs[rs])
-            self.out.write(c)
-            self.out.flush()
-        elif ix == IoDevice.CLOCK_LO_CS:
-            self.regs[rd] = self.clock & 0o77  # Lower 6 bits of clock
-        elif ix == IoDevice.CLOCK_HI_CS:
-            # Upper 6 bits of clock
-            self.regs[rd] = (self.clock & 0o7700) >> 6
+        if ix in Emu.op_io_switch:
+            op_io_func = Emu.op_io_switch[ix]
+            op_io_func(self, ins)
         else:
             logging.warning('Unknown IO device')
             self.halted = True
@@ -468,18 +491,11 @@ class Emu:
 
 if __name__ == '__main__':
     use_dbg = False
-    run_server = False
 
     if len(sys.argv) >= 2:
-        run_server = 's' in sys.argv[1]
         use_dbg = 'd' in sys.argv[1]
 
-    if run_server:
-        filename = 'talkative-server-redacted.rom'
-    else:
-        filename = 'talkative-client.rom'
-
-    emu = Emu.from_filename(filename)
+    emu = Emu.from_filename('mandelflag.rom')
 
     try:
         if use_dbg:

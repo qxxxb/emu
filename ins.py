@@ -79,6 +79,15 @@ class IoDevice(Enum):
     ENET_RECV = 0o011
     ENET_SEND = 0o012
     ENET_CONN_CTRL = 0o013
+    MEM_ADDR_HI = 0o020
+    MEM_ADDR_MID = 0o021
+    MEM_ADDR_LO = 0o022
+    MEM_READ = 0o023
+    MEM_WRITE = 0o024
+    GPU_X = 0o025
+    GPU_Y = 0o026
+    GPU_DRAW = 0o027
+    DPAD = 0o030
 
 
 class Ins:

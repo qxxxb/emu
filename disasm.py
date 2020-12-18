@@ -164,8 +164,8 @@ class Disasm:
 
 
 if __name__ == '__main__':
-    emu = Emu.from_filename('talkative-client.rom')
-    Disasm.disasm_tape_to_file(emu.tape, 'talkative-client.asm')
+    emu = Emu.from_filename('win.rom')
+    Disasm.disasm_tape_to_file(emu.tape, 'win.asm')
 
-    emu = Emu.from_filename('talkative-server.rom')
-    Disasm.disasm_tape_to_file(emu.tape, 'talkative-server.asm')
+#     emu = Emu.from_filename('talkative-server.rom')
+#     Disasm.disasm_tape_to_file(emu.tape, 'talkative-server.asm')
