@@ -33,6 +33,10 @@ class Tape:
 
         return ans
 
+    def to_bytes(self):
+        ans = [ins.to_bytes() for ins in self.data]
+        return b''.join(ans)
+
     def __getitem__(self, i):
         return self.data[i]
 
@@ -375,14 +379,29 @@ class Emu:
         self.out.write(c)
         self.out.flush()
 
+    def reset_clock(self):
+        self.start = time.time()
+        self.clock == 0
+        if self.use_gpu:
+            should_halt = self.gpu.update()
+            if should_halt:
+                self.halted = True
+
     def op_io_clock_lo_cs(self, ins):
-        (rd, ix_, rs_) = ins.as_io()
-        self.regs[rd] = self.clock & 0o77  # Lower 6 bits of clock
+        (rd, ix_, rs) = ins.as_io()
+        if rs == 0:
+            # Get lower 6 bits of clock
+            self.regs[rd] = self.clock & 0o77
+        else:
+            self.reset_clock()
 
     def op_io_clock_hi_cs(self, ins):
-        (rd, ix_, rs_) = ins.as_io()
-        # Upper 6 bits of clock
-        self.regs[rd] = (self.clock & 0o7700) >> 6
+        (rd, ix_, rs) = ins.as_io()
+        if rs == 0:
+            # Get upper 6 bits of clock
+            self.regs[rd] = (self.clock & 0o7700) >> 6
+        else:
+            self.reset_clock()
 
     def op_io_mem_addr_lo(self, ins):
         (rd_, ix_, rs) = ins.as_io()
@@ -493,7 +512,7 @@ class Emu:
             # Keep a log of instructions executed
             inss_log = []
 
-        start = time.time()
+        self.start = time.time()
         self.clock = 0
 
         while not self.halted:
@@ -502,22 +521,17 @@ class Emu:
             if log_inss:
                 inss_log.append(self.pc)
 
+            # 19483
             self.execute(ins)
             self.pc = (self.pc + 1) % len(self.tape)  # Tape is looped
 
             now = time.time()
-            elapsed = now - start
+            elapsed = now - self.start
             elapsed = round(elapsed, 2)
             elapsed = int(elapsed * 100)
 
-            # Clock wrap arounds in 40.96 seconds
-            self.clock = elapsed & 0o7777
-
-            if self.pc == self.gpu_update_ins:
-                if self.use_gpu:
-                    should_halt = self.gpu.update()
-                    if should_halt:
-                        self.halted = True
+            # Clock does not wrap
+            self.clock = min(elapsed, 0o7777)
 
         if self.use_gpu:
             self.gpu.quit()
@@ -588,24 +602,21 @@ class Emu:
             # Use fake clock where each instruction takes one centisecond
             self.clock = max(self.clock + 1, 0o7777)
 
+    def save_tape(self, filename):
+        with open(filename, 'w') as f:
+            b = self.tape.to_bytes()
+            s = base64.b64encode(b).decode()
+            f.write(s)
+
 
 if __name__ == '__main__':
     assert len(sys.argv) >= 2
     filename = sys.argv[1]
 
-    # Which instruction should the GPU update the screen at?
-    # This should the tape address of an instruction where the program has
-    # finished a frame.
-    # If you want to run a new ROM, you should add an entry to this dictionary.
-    gpu_update_ins = {
-        'win.rom': 987,
-    }[filename]
-
     emu = Emu.from_filename(filename, use_gpu=True)
-    emu.gpu_update_ins = gpu_update_ins
 
     try:
-        emu.run(log_inss=True)
+        emu.run()
     except KeyboardInterrupt:
         traceback.print_exc(file=sys.stdout)
         # Print the PC before we quit

@@ -1,4 +1,4 @@
-from Crypto.Util.number import bytes_to_long
+from Crypto.Util.number import bytes_to_long, long_to_bytes
 from enum import Enum
 
 
@@ -242,6 +242,11 @@ class Ins:
 
         ans.check()
         return ans
+
+    def to_bytes(self):
+        opc = (self.cond.value * 21) + self.op.value + 1
+        ans = opc << (6 * 3) | self.a << (6 * 2) | self.b << 6 | self.c
+        return long_to_bytes(ans)
 
     def __repr__(self):
         return str(self.as_values())

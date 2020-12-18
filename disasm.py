@@ -1,5 +1,6 @@
 from ins import *
 from emu import *
+import os.path
 
 
 class Disasm:
@@ -164,8 +165,7 @@ class Disasm:
 
 
 if __name__ == '__main__':
-    emu = Emu.from_filename('win.rom')
-    Disasm.disasm_tape_to_file(emu.tape, 'win.asm')
-
-#     emu = Emu.from_filename('talkative-server.rom')
-#     Disasm.disasm_tape_to_file(emu.tape, 'talkative-server.asm')
+    assert len(sys.argv) >= 2
+    filename = sys.argv[1]
+    emu = Emu.from_filename(filename)
+    Disasm.disasm_tape_to_file(emu.tape, filename + '.asm')
