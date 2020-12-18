@@ -1,6 +1,5 @@
 from ins import *
 from emu import *
-import os.path
 
 
 class Disasm:

@@ -5,7 +5,7 @@ import sys
 
 
 def get_keys():
-    emu = Emu.from_filename('talkative-server-redacted.rom')
+    emu = Emu.from_filename('roms/talkative-server-redacted.rom')
     key_inss = emu.tape.data[28:68]
     key_inss.sort(key=lambda ins: ins.b)
 

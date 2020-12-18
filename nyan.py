@@ -75,6 +75,7 @@ def draw_row():
         Ins.from_values(Op.ADDI, Cond.UN, rs['gpu_x'], 0, 0),
         Ins.from_values(Op.LBL, Cond.UN, la, lb, 0),
 
+        # offset = 14
         Ins.from_values(Op.ADDI, Cond.UN, x, rs['gpu_x'], 14),
         Ins.from_io(Cond.UN, 0, IoDevice.GPU_X, x),
 
