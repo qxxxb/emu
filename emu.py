@@ -600,7 +600,7 @@ class Emu:
             self.pc = (self.pc + 1) % len(self.tape)  # Tape is looped
 
             # Use fake clock where each instruction takes one centisecond
-            self.clock = max(self.clock + 1, 0o7777)
+            self.clock = min(self.clock + 1, 0o7777)
 
     def save_tape(self, filename):
         with open(filename, 'w') as f:
