@@ -2,11 +2,12 @@ import base64
 import logging
 import sys
 from string import digits, ascii_uppercase
-import time
 import traceback
+import time
 
 from ins import *
 from disasm import *
+import gpu
 
 
 class Tape:
@@ -64,6 +65,34 @@ class Regs:
     def __setitem__(self, i, v):
         if i != 0:
             self.data[i] = v & 0o77
+
+    def __len__(self):
+        return len(self.data)
+
+
+class Mem:
+    '''
+    2**18 16-bit words.
+    '''
+
+    def __init__(self):
+        self.data = [0] * (2**18)
+        self.addr = 0  # 18-bit index for `self.data`
+
+    def dump(self):
+        # Warning: very big
+        n = 8
+        for i in range(0, len(self.data), n):
+            xs = self.data[i:i + n]
+            xs = [str(x).rjust(2) for x in xs]
+            print(' '.join(xs))
+
+    def __getitem__(self, i):
+        assert 0 <= self.data[i] < 64
+        return self.data[i]
+
+    def __setitem__(self, i, v):
+        self.data[i] = v & 0o77
 
     def __len__(self):
         return len(self.data)
@@ -131,18 +160,26 @@ def serial_from_str(s):
 
 
 class Emu:
-    def __init__(self):
+    def __init__(self, use_gpu=False):
         self.regs = Regs()
+        self.mem = Mem()
+
+        self.use_gpu = use_gpu
+        if use_gpu:
+            self.gpu = gpu.Gpu()
+            self.gpu.start()
+
         self.pc = 0
         self.halted = False
         self.cf = False
         self.clock = 0
+
         self.buffer = ''
         self.out = sys.stdout
 
     @classmethod
-    def from_filename(cls, filename):
-        ans = cls()
+    def from_filename(cls, filename, use_gpu=False):
+        ans = cls(use_gpu)
         s = open(filename).read().strip()
         s = base64.b64decode(s)
         ans.tape = Tape.from_bytes(s)
@@ -298,7 +335,9 @@ class Emu:
             if ch_ins.op == Op.LBL and \
                     self.should_execute(ch_ins) and \
                     ch_ins.label_key() == key:
-                self.pc = i
+                # We always increment the PC after executing an instruction.
+                # To offset that, we subtract 1 here.
+                self.pc = i - 1
                 return
 
     def op_jdn(self, ins):
@@ -309,7 +348,7 @@ class Emu:
         self.buffer += s
 
     def op_io_serial_incoming(self, ins):
-        (rd, ix_, rs) = ins.as_io()
+        (rd, ix_, rs_) = ins.as_io()
 
         # Optionally read more input if we don't have any in the buffer
         if len(self.buffer) == 0:
@@ -319,7 +358,7 @@ class Emu:
         self.regs[rd] = from_int(len(self.buffer))
 
     def op_io_serial_read(self, ins):
-        (rd, ix_, rs) = ins.as_io()
+        (rd, ix_, rs_) = ins.as_io()
 
         # Optionally read more input if we don't have any in the buffer
         if len(self.buffer) == 0:
@@ -331,7 +370,7 @@ class Emu:
         self.regs[rd] = from_int(serial_from_chr(c))
 
     def op_io_serial_write(self, ins):
-        (rd, ix_, rs) = ins.as_io()
+        (rd_, ix_, rs) = ins.as_io()
         c = chr_from_serial(self.regs[rs])
         self.out.write(c)
         self.out.flush()
@@ -345,17 +384,65 @@ class Emu:
         # Upper 6 bits of clock
         self.regs[rd] = (self.clock & 0o7700) >> 6
 
+    def op_io_mem_addr_lo(self, ins):
+        (rd_, ix_, rs) = ins.as_io()
+        # Clear lower bits without clearing upper bits
+        mask = (0o77 << 6) + (0o77 << (6 * 2))
+        self.mem.addr &= mask
+        self.mem.addr |= self.regs[rs]
+
+    def op_io_mem_addr_mid(self, ins):
+        (rd_, ix_, rs) = ins.as_io()
+        mask = 0o77 + (0o77 << (6 * 2))
+        self.mem.addr &= mask
+        self.mem.addr |= (self.regs[rs] << 6)
+
+    def op_io_mem_addr_hi(self, ins):
+        (rd_, ix_, rs) = ins.as_io()
+        mask = 0o77 + (0o77 << 6)
+        self.mem.addr &= mask
+        self.mem.addr |= (self.regs[rs] << (6 * 2))
+
+    def op_io_mem_read(self, ins):
+        (rd, ix_, rs_) = ins.as_io()
+        self.regs[rd] = self.mem[self.mem.addr]
+        self.mem.addr = (self.mem.addr + 1) % len(self.mem)
+
+    def op_io_mem_write(self, ins):
+        (rd_, ix_, rs) = ins.as_io()
+        self.mem[self.mem.addr] = self.regs[rs]
+        self.mem.addr = (self.mem.addr + 1) % len(self.mem)
+
+    def op_gpu_x(self, ins):
+        (rd_, ix_, rs) = ins.as_io()
+        self.gpu.set_x(self.regs[rs])
+
+    def op_gpu_y(self, ins):
+        (rd_, ix_, rs) = ins.as_io()
+        self.gpu.set_y(self.regs[rs])
+
+    def op_gpu_draw(self, ins):
+        (rd_, ix, rs) = ins.as_io()
+        self.gpu.draw(self.regs[rs])
+
     op_io_switch = {
         IoDevice.SERIAL_INCOMING: op_io_serial_incoming,
         IoDevice.SERIAL_READ: op_io_serial_read,
         IoDevice.SERIAL_WRITE: op_io_serial_write,
         IoDevice.CLOCK_LO_CS: op_io_clock_lo_cs,
         IoDevice.CLOCK_HI_CS: op_io_clock_hi_cs,
-        IoDevice.CLOCK_HI_CS: op_io_clock_hi_cs
+        IoDevice.MEM_ADDR_HI: op_io_mem_addr_hi,
+        IoDevice.MEM_ADDR_MID: op_io_mem_addr_mid,
+        IoDevice.MEM_ADDR_LO: op_io_mem_addr_lo,
+        IoDevice.MEM_READ: op_io_mem_read,
+        IoDevice.MEM_WRITE: op_io_mem_write,
+        IoDevice.GPU_X: op_gpu_x,
+        IoDevice.GPU_Y: op_gpu_y,
+        IoDevice.GPU_DRAW: op_gpu_draw,
     }
 
     def op_io(self, ins):
-        (rd, ix, rs) = ins.as_io()
+        (rd_, ix, rs_) = ins.as_io()
         if ix in Emu.op_io_switch:
             op_io_func = Emu.op_io_switch[ix]
             op_io_func(self, ins)
@@ -423,9 +510,17 @@ class Emu:
             elapsed = round(elapsed, 2)
             elapsed = int(elapsed * 100)
 
-            # Clock is not supposed to overflow or wrap around.
-            # This means that the program must run in under 40.95 seconds.
-            self.clock = max(elapsed, 0o7777)
+            # Clock wrap arounds in 40.96 seconds
+            self.clock = elapsed & 0o7777
+
+            if self.pc == self.gpu_update_ins:
+                if self.use_gpu:
+                    should_halt = self.gpu.update()
+                    if should_halt:
+                        self.halted = True
+
+        if self.use_gpu:
+            self.gpu.quit()
 
         if log_inss:
             return inss_log
@@ -440,7 +535,12 @@ class Emu:
         try:
             if cmd[0] == 'p':
                 i = int(cmd[1])
-                print('[{}] = {}'.format(i, self.regs[i]))
+                print('regs[{}] = {}'.format(i, self.regs[i]))
+            elif cmd[0] == 'x':
+                i = int(cmd[1])
+                print('mem[{}] = {}'.format(i, self.mem[i]))
+            elif cmd[0] == 'xi':
+                print('mem.addr = {}'.format(self.mem.addr))
             elif cmd[0] == 'reg':
                 self.regs.dump()
             elif cmd[0] == 'l':
@@ -490,18 +590,22 @@ class Emu:
 
 
 if __name__ == '__main__':
-    use_dbg = False
+    assert len(sys.argv) >= 2
+    filename = sys.argv[1]
 
-    if len(sys.argv) >= 2:
-        use_dbg = 'd' in sys.argv[1]
+    # Which instruction should the GPU update the screen at?
+    # This should the tape address of an instruction where the program has
+    # finished a frame.
+    # If you want to run a new ROM, you should add an entry to this dictionary.
+    gpu_update_ins = {
+        'win.rom': 987,
+    }[filename]
 
-    emu = Emu.from_filename('mandelflag.rom')
+    emu = Emu.from_filename(filename, use_gpu=True)
+    emu.gpu_update_ins = gpu_update_ins
 
     try:
-        if use_dbg:
-            emu.run_dbg()
-        else:
-            emu.run()
+        emu.run(log_inss=True)
     except KeyboardInterrupt:
         traceback.print_exc(file=sys.stdout)
         # Print the PC before we quit

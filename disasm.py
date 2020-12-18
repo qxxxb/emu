@@ -155,7 +155,7 @@ class Disasm:
             if raw:
                 out.write(str(ins) + '\n')
             else:
-                out.write('{:0>3}: {}\n'.format(i, Disasm.disasm(ins)))
+                out.write('{:0>4}: {}\n'.format(i, Disasm.disasm(ins)))
 
     @staticmethod
     def disasm_tape_to_file(tape, filename, raw=False):

@@ -378,6 +378,54 @@ class TestEmu(unittest.TestCase):
         ins = Ins.from_io(Cond.UN, 1, IoDevice.CLOCK_HI_CS, 0)
         emu.execute(ins)
 
+    def test_mem_addr(self):
+        emu = Emu()
+        emu.mem.addr = 12345
+        emu.regs[1] = 0b1011
+        emu.regs[2] = 0b1010
+        emu.regs[3] = 0b111111
+
+        ins_lo = Ins.from_io(Cond.UN, 0, IoDevice.MEM_ADDR_LO, 1)
+        ins_mid = Ins.from_io(Cond.UN, 0, IoDevice.MEM_ADDR_MID, 2)
+        ins_hi = Ins.from_io(Cond.UN, 0, IoDevice.MEM_ADDR_HI, 3)
+        emu.execute(ins_lo)
+        emu.execute(ins_mid)
+        emu.execute(ins_hi)
+
+        self.assertEqual(bin(emu.mem.addr), '0b111111' + '001010' + '001011')
+
+    def test_mem_write(self):
+        emu = Emu()
+        emu.mem.addr = 12345
+        emu.regs[1] = 0b1010
+
+        ins = Ins.from_io(Cond.UN, 0, IoDevice.MEM_WRITE, 1)
+        emu.execute(ins)
+
+        self.assertEqual(emu.mem[12345], 0b1010)
+        # Assert unchanged
+        self.assertEqual(emu.regs[1], 0b1010)
+        # Assert address incremented
+        self.assertEqual(emu.mem.addr, 12345 + 1)
+
+    def test_mem_read(self):
+        emu = Emu()
+        emu.regs[1] = 3
+        emu.mem[3 << 6] = 0b1010
+
+        ins = Ins.from_io(Cond.UN, 0, IoDevice.MEM_ADDR_MID, 1)
+        emu.execute(ins)
+        self.assertEqual(emu.mem.addr, 3 << 6)
+
+        ins = Ins.from_io(Cond.UN, 2, IoDevice.MEM_READ, 0)
+        emu.execute(ins)
+
+        self.assertEqual(emu.regs[2], 0b1010)
+        # Assert unchanged
+        self.assertEqual(emu.mem[3 << 6], 0b1010)
+        # Assert address incremented
+        self.assertEqual(emu.mem.addr, (3 << 6) + 1)
+
 
 if __name__ == '__main__':
     unittest.main()
